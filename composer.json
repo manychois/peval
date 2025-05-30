@@ -1,0 +1,25 @@
+{
+  "name": "manychois/peval",
+  "autoload": {
+    "psr-4": {
+      "Manychois\\Peval\\": "src/"
+    }
+  },
+  "authors": [
+    {
+      "name": "Siu Pang Tommy Choi",
+      "email": "manychois@manychois.com.au"
+    }
+  ],
+  "require": {
+    "php": "^8.4"
+  },
+  "require-dev": {
+    "friendsofphp/php-cs-fixer": "^3.75"
+  },
+  "scripts": {
+    "cs-fix": [
+      "PHP_CS_FIXER_IGNORE_ENV=1 php-cs-fixer fix ."
+    ]
+  }
+}
