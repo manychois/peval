@@ -109,9 +109,21 @@ class TokenStream
     private static function getTokenType(\PhpToken $phpToken): ?TokenType
     {
         $tokenType = match ($phpToken->id) {
-            T_LNUMBER => TokenType::INTEGER,
+            T_BOOLEAN_AND => TokenType::WORD_AND,
+            T_BOOLEAN_OR => TokenType::WORD_OR,
             T_DNUMBER => TokenType::FLOAT,
+            T_IS_EQUAL => TokenType::EQUAL,
+            T_IS_GREATER_OR_EQUAL => TokenType::GREATER_EQUAL,
+            T_IS_IDENTICAL => TokenType::IDENTICAL,
+            T_IS_NOT_EQUAL => TokenType::NOT_EQUAL,
+            T_IS_NOT_IDENTICAL => TokenType::NOT_IDENTICAL,
+            T_IS_SMALLER_OR_EQUAL => TokenType::LESS_EQUAL,
+            T_LNUMBER => TokenType::INTEGER,
+            T_LOGICAL_AND => TokenType::SYMBOL_AND,
+            T_LOGICAL_OR => TokenType::SYMBOL_OR,
+            T_LOGICAL_XOR => TokenType::XOR,
             T_POW => TokenType::POWER,
+            T_VARIABLE => TokenType::VARIABLE,
             default => null,
         };
         if (null === $tokenType) {
@@ -124,6 +136,8 @@ class TokenStream
                 '!' => TokenType::NOT,
                 '(' => TokenType::LEFT_PARENTHESIS,
                 ')' => TokenType::RIGHT_PARENTHESIS,
+                '>' => TokenType::GREATER,
+                '<' => TokenType::LESS,
                 default => null,
             };
         }

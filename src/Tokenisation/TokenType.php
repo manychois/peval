@@ -32,9 +32,12 @@ enum TokenType: string
     case GREATER_EQUAL = '>=';
 
     // Logical
-    case AND = '&&';
-    case OR = '||';
+    case SYMBOL_AND = '&&';
+    case SYMBOL_OR = '||';
+    case WORD_AND = 'AND';
+    case WORD_OR = 'OR';
     case NOT = '!';
+    case XOR = 'XOR';
 
     // Other
     case VARIABLE = 'VARIABLE';
