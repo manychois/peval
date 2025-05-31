@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Manychois\Peval;
+namespace Manychois\Peval\Tokenisation;
 
 class Token
 {

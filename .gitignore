@@ -1,3 +1,4 @@
 /vendor/
 /.php-cs-fixer.cache
+/dev-notes.md
 /playground.php

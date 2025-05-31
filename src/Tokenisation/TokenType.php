@@ -2,16 +2,15 @@
 
 declare(strict_types=1);
 
-namespace Manychois\Peval;
+namespace Manychois\Peval\Tokenisation;
 
 enum TokenType: string
 {
     // Literals
+    case BOOL = 'BOOL';
     case INTEGER = 'INTEGER';
     case FLOAT = 'FLOAT';
     case STRING = 'STRING';
-    case TRUE = 'TRUE';
-    case FALSE = 'FALSE';
     case NULL = 'NULL';
 
     // Operators

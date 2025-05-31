@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Manychois\Peval\Expressions;
 
-use Manychois\Peval\Token;
+use Manychois\Peval\Tokenisation\Token;
 
 class LiteralExpression implements ExpressionInterface
 {
