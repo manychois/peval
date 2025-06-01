@@ -39,7 +39,7 @@ class TokenStream
                 $phpToken->pos
             );
 
-            $tokenType = static::getTokenType($phpToken);
+            $tokenType = self::getTokenType($phpToken);
             if (null === $tokenType) {
                 continue;
             }

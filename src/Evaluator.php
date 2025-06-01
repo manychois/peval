@@ -14,8 +14,17 @@ use Manychois\Peval\Tokenisation\TokenType;
 
 class Evaluator implements VisitorInterface
 {
+    /**
+     * @var array<string,mixed>
+     */
     private array $context;
 
+    /**
+     * Creates a new Evaluator instance.
+     *
+     * @param array<string,mixed> $context The context in which to evaluate expressions.
+     *                                     This can include variables and their values that the evaluator can access.
+     */
     public function __construct(array $context = [])
     {
         $this->context = $context;
@@ -46,13 +55,28 @@ class Evaluator implements VisitorInterface
 
         $right = $this->evaluate($expr->right);
 
+        $numeric = function (mixed $value, string $leftOrRight) use ($expr): int|float|string {
+            if (is_numeric($value)) {
+                return $value;
+            }
+            $message = sprintf(
+                'Invalid %s operand for mathematical operator at line %d, column %d, found %s.',
+                $leftOrRight,
+                $expr->operator->line,
+                $expr->operator->column,
+                \get_debug_type($value)
+            );
+
+            throw new \LogicException($message);
+        };
+
         return match ($opType) {
-            TokenType::PLUS => $left + $right,
-            TokenType::MINUS => $left - $right,
-            TokenType::MULTIPLY => $left * $right,
-            TokenType::DIVIDE => $left / $right,
-            TokenType::MODULO => $left % $right,
-            TokenType::POWER => $left ** $right,
+            TokenType::PLUS => $numeric($left, 'left') + $numeric($right, 'right'),
+            TokenType::MINUS => $numeric($left, 'left') - $numeric($right, 'right'),
+            TokenType::MULTIPLY => $numeric($left, 'left') * $numeric($right, 'right'),
+            TokenType::DIVIDE => $numeric($left, 'left') / $numeric($right, 'right'),
+            TokenType::MODULO => $numeric($left, 'left') % $numeric($right, 'right'),
+            TokenType::POWER => $numeric($left, 'left') ** $numeric($right, 'right'),
             TokenType::EQUAL => $left == $right,
             TokenType::NOT_EQUAL => $left != $right,
             TokenType::IDENTICAL => $left === $right,
@@ -74,7 +98,7 @@ class Evaluator implements VisitorInterface
             TokenType::INTEGER => intval($expr->value->text),
             TokenType::FLOAT => floatval($expr->value->text),
             TokenType::BOOL => filter_var($expr->value->text, FILTER_VALIDATE_BOOLEAN),
-            default => throw new \LogicException(sprintf('Unsupported literal type: %s', $expr->value->type)),
+            default => throw new \LogicException(sprintf('Unsupported literal type: %s', $expr->value->type->name)),
         };
     }
 
@@ -82,10 +106,24 @@ class Evaluator implements VisitorInterface
     {
         $value = $this->evaluate($expr->expression);
 
+        $numeric = function (mixed $value) use ($expr): int|float|string {
+            if (is_numeric($value)) {
+                return $value;
+            }
+            $message = sprintf(
+                'Invalid operand for unary operator at line %d, column %d, found %s.',
+                $expr->operator->line,
+                $expr->operator->column,
+                \get_debug_type($value)
+            );
+
+            throw new \LogicException($message);
+        };
+
         return match ($expr->operator->type) {
-            TokenType::MINUS => -$value,
+            TokenType::MINUS => -$numeric($value),
             TokenType::NOT => !$value,
-            TokenType::PLUS => +$value,
+            TokenType::PLUS => +$numeric($value),
             default => throw new \LogicException(sprintf('Unsupported unary operator: %s', $expr->operator->text)),
         };
     }
