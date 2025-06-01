@@ -14,7 +14,15 @@ return (new PhpCsFixer\Config())
         '@PHP84Migration' => true,
         '@PSR12' => true,
         '@PhpCsFixer' => true,
+        'concat_space' => [
+            'spacing' => 'one',
+        ],
         'declare_strict_types' => true,
+        'global_namespace_import' => [
+            'import_classes' => true,
+            'import_constants' => false,
+            'import_functions' => false,
+        ],
     ])
     ->setFinder($finder)
     ->setUsingCache(true)

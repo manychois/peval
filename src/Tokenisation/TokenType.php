@@ -46,9 +46,13 @@ enum TokenType: string
     case RIGHT_PARENTHESIS = ')';
     case LEFT_BRACKET = '[';
     case RIGHT_BRACKET = ']';
+    case LEFT_BRACE = '{';
+    case RIGHT_BRACE = '}';
     case COMMA = ',';
     case DOT = '.';
     case QUESTION = '?';
     case COLON = ':';
+    case QUOTE = '"';
+    case WHITESPACE = ' ';
     case EOF = 'EOF';
 }

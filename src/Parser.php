@@ -7,6 +7,7 @@ namespace Manychois\Peval;
 use Manychois\Peval\Expressions\BinaryExpression;
 use Manychois\Peval\Expressions\ExpressionInterface;
 use Manychois\Peval\Expressions\LiteralExpression;
+use Manychois\Peval\Expressions\StringInterpolationExpression;
 use Manychois\Peval\Expressions\UnaryExpression;
 use Manychois\Peval\Expressions\VariableExpression;
 use Manychois\Peval\Tokenisation\TokenStream;
@@ -105,8 +106,20 @@ class Parser
 
     private function parseComparison(TokenStream $lp): ExpressionInterface
     {
-        $expr = $this->parseAddition($lp);
+        $expr = $this->parseConcatenation($lp);
         while ($lp->matchAny(TokenType::LESS, TokenType::LESS_EQUAL, TokenType::GREATER, TokenType::GREATER_EQUAL)) {
+            $operator = $lp->previous();
+            $right = $this->parseConcatenation($lp);
+            $expr = new BinaryExpression($expr, $operator, $right);
+        }
+
+        return $expr;
+    }
+
+    private function parseConcatenation(TokenStream $lp): ExpressionInterface
+    {
+        $expr = $this->parseAddition($lp);
+        while ($lp->matchAny(TokenType::DOT)) {
             $operator = $lp->previous();
             $right = $this->parseAddition($lp);
             $expr = new BinaryExpression($expr, $operator, $right);
@@ -167,7 +180,7 @@ class Parser
 
     private function parsePrimary(TokenStream $lp): ExpressionInterface
     {
-        if ($lp->matchAny(TokenType::BOOL, TokenType::INTEGER, TokenType::FLOAT)) {
+        if ($lp->matchAny(TokenType::BOOL, TokenType::INTEGER, TokenType::FLOAT, TokenType::NULL, TokenType::STRING)) {
             return new LiteralExpression($lp->previous());
         }
 
@@ -179,6 +192,23 @@ class Parser
             $expr = $this->parseExpression($lp);
             if (!$lp->matchAny(TokenType::RIGHT_PARENTHESIS)) {
                 throw $lp->createParseError('Expected closing parenthesis');
+            }
+
+            return $expr;
+        }
+
+        if ($lp->matchAny(TokenType::QUOTE)) {
+            $expr = new StringInterpolationExpression();
+            while (!$lp->matchAny(TokenType::QUOTE)) {
+                if (TokenType::LEFT_BRACE === $lp->current()->type) {
+                    $lp->advance(); // Consume the opening brace
+                    $expr->addInnerExpression($this->parseExpression($lp));
+                    if (!$lp->matchAny(TokenType::RIGHT_BRACE)) {
+                        throw $lp->createParseError('Expected closing brace');
+                    }
+                } else {
+                    $expr->addInnerExpression($this->parseExpression($lp));
+                }
             }
 
             return $expr;

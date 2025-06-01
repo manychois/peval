@@ -10,6 +10,8 @@ interface VisitorInterface
 
     public function visitLiteral(LiteralExpression $expr): mixed;
 
+    public function visitStringInterpolation(StringInterpolationExpression $expr): mixed;
+
     public function visitUnary(UnaryExpression $expr): mixed;
 
     public function visitVariable(VariableExpression $expr): mixed;
