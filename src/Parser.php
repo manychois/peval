@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Manychois\Peval;
 
+use Manychois\Peval\Expressions\ArrayAccessExpression;
+use Manychois\Peval\Expressions\ArrayElement;
+use Manychois\Peval\Expressions\ArrayExpression;
 use Manychois\Peval\Expressions\BinaryExpression;
 use Manychois\Peval\Expressions\ExpressionInterface;
 use Manychois\Peval\Expressions\LiteralExpression;
@@ -170,12 +173,26 @@ class Parser
     {
         if ($lp->matchAny(TokenType::MINUS, TokenType::NOT, TokenType::PLUS)) {
             $operator = $lp->previous();
-            $expression = $this->parsePrimary($lp);
+            $right = $this->parseUnary($lp);
 
-            return new UnaryExpression($operator, $expression);
+            return new UnaryExpression($operator, $right);
         }
 
-        return $this->parsePrimary($lp);
+        return $this->parsePostfix($lp);
+    }
+
+    private function parsePostfix(TokenStream $lp): ExpressionInterface
+    {
+        $expr = $this->parsePrimary($lp);
+        while ($lp->matchAny(TokenType::LEFT_BRACKET)) {
+            $offset = $this->parseExpression($lp);
+            $expr = new ArrayAccessExpression($expr, $offset);
+            if (!$lp->matchAny(TokenType::RIGHT_BRACKET)) {
+                throw $lp->createParseException('Expected closing bracket');
+            }
+        }
+
+        return $expr;
     }
 
     private function parsePrimary(TokenStream $lp): ExpressionInterface
@@ -191,7 +208,7 @@ class Parser
         if ($lp->matchAny(TokenType::LEFT_PARENTHESIS)) {
             $expr = $this->parseExpression($lp);
             if (!$lp->matchAny(TokenType::RIGHT_PARENTHESIS)) {
-                throw $lp->createParseError('Expected closing parenthesis');
+                throw $lp->createParseException('Expected closing parenthesis');
             }
 
             return $expr;
@@ -204,7 +221,7 @@ class Parser
                     $lp->advance(); // Consume the opening brace
                     $expr->addInnerExpression($this->parseExpression($lp));
                     if (!$lp->matchAny(TokenType::RIGHT_BRACE)) {
-                        throw $lp->createParseError('Expected closing brace');
+                        throw $lp->createParseException('Expected closing brace');
                     }
                 } else {
                     $expr->addInnerExpression($this->parseExpression($lp));
@@ -214,6 +231,66 @@ class Parser
             return $expr;
         }
 
-        throw $lp->createParseError();
+        if ($lp->matchAny(TokenType::LEFT_BRACKET)) {
+            $elements = [];
+            while (!$lp->matchAny(TokenType::RIGHT_BRACKET)) {
+                if (count($elements) > 0) {
+                    if (!$lp->matchAny(TokenType::COMMA, TokenType::RIGHT_BRACKET)) {
+                        throw $lp->createParseException('Expected comma or closing bracket');
+                    }
+                    if (TokenType::RIGHT_BRACKET === $lp->previous()->type) {
+                        break;
+                    }
+                    if ($lp->matchAny(TokenType::RIGHT_BRACKET)) {
+                        break;
+                    }
+                }
+
+                $value = $this->parseExpression($lp);
+                if ($lp->matchAny(TokenType::DOUBLE_ARROW)) {
+                    $key = $value;
+                    $value = $this->parseExpression($lp);
+                    $elements[] = new ArrayElement($value, $key);
+                } else {
+                    $elements[] = new ArrayElement($value);
+                }
+            }
+
+            return new ArrayExpression($elements);
+        }
+
+        if ($lp->matchAny(TokenType::ARRAY)) {
+            if (!$lp->matchAny(TokenType::LEFT_PARENTHESIS)) {
+                throw $lp->createParseException('Expected opening parenthesis after "array" keyword');
+            }
+
+            $elements = [];
+            while (!$lp->matchAny(TokenType::RIGHT_PARENTHESIS)) {
+                if (count($elements) > 0) {
+                    if (!$lp->matchAny(TokenType::COMMA, TokenType::RIGHT_PARENTHESIS)) {
+                        throw $lp->createParseException('Expected comma or closing parenthesis');
+                    }
+                    if (TokenType::RIGHT_PARENTHESIS === $lp->previous()->type) {
+                        break;
+                    }
+                    if ($lp->matchAny(TokenType::RIGHT_PARENTHESIS)) {
+                        break;
+                    }
+                }
+
+                $value = $this->parseExpression($lp);
+                if ($lp->matchAny(TokenType::DOUBLE_ARROW)) {
+                    $key = $value;
+                    $value = $this->parseExpression($lp);
+                    $elements[] = new ArrayElement($value, $key);
+                } else {
+                    $elements[] = new ArrayElement($value);
+                }
+            }
+
+            return new ArrayExpression($elements);
+        }
+
+        throw $lp->createParseException();
     }
 }

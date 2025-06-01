@@ -39,6 +39,9 @@ enum TokenType: string
     case NOT = '!';
     case XOR = 'XOR';
 
+    // Keywords
+    case ARRAY = 'ARRAY';
+
     // Other
     case VARIABLE = 'VARIABLE';
     case IDENTIFIER = 'IDENTIFIER';
@@ -53,6 +56,7 @@ enum TokenType: string
     case QUESTION = '?';
     case COLON = ':';
     case QUOTE = '"';
+    case DOUBLE_ARROW = '=>';
     case WHITESPACE = ' ';
     case EOF = 'EOF';
 }

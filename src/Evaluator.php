@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Manychois\Peval;
 
 use LogicException;
+use Manychois\Peval\Expressions\ArrayAccessExpression;
+use Manychois\Peval\Expressions\ArrayExpression;
 use Manychois\Peval\Expressions\BinaryExpression;
 use Manychois\Peval\Expressions\ExpressionInterface;
 use Manychois\Peval\Expressions\LiteralExpression;
@@ -39,6 +41,56 @@ class Evaluator implements VisitorInterface
     }
 
     // region implements VisitorInterface
+
+    public function visitArray(ArrayExpression $expr): mixed
+    {
+        $result = [];
+        foreach ($expr->elements as $element) {
+            $key = null;
+            if ($element->key) {
+                $key = $this->evaluate($element->key);
+                if (!is_int($key) && !is_string($key)) {
+                    throw new LogicException(sprintf('Invalid key type %s for array element', get_debug_type($key)));
+                }
+            }
+            if (null === $key) {
+                // if no key is provided, use the next integer index
+                $key = count($result);
+            }
+            $value = $this->evaluate($element->value);
+            $result[$key] = $value;
+        }
+
+        return $result;
+    }
+
+    public function visitArrayAccess(ArrayAccessExpression $expr): mixed
+    {
+        $target = $this->evaluate($expr->target);
+        $offset = $this->evaluate($expr->offset);
+
+        if (!is_array($target) && !is_object($target)) {
+            throw new LogicException('Cannot access offset on non-array/non-object');
+        }
+
+        if (is_array($target)) {
+            if (!is_string($offset) && !is_int($offset)) {
+                throw new LogicException(sprintf('Invalid offset type %s for array access', get_debug_type($offset)));
+            }
+
+            if (!array_key_exists($offset, $target)) {
+                throw new LogicException(sprintf('Undefined offset %s in array', var_export($offset, true)));
+            }
+
+            return $target[$offset];
+        }
+
+        if (isset($target->{$offset})) {
+            return $target->{$offset};
+        }
+
+        throw new LogicException(sprintf('Undefined property %s on object of type %s', var_export($offset, true), get_debug_type($target)));
+    }
 
     public function visitBinary(BinaryExpression $expr): mixed
     {

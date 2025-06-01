@@ -6,6 +6,10 @@ namespace Manychois\Peval\Expressions;
 
 interface VisitorInterface
 {
+    public function visitArray(ArrayExpression $expr): mixed;
+
+    public function visitArrayAccess(ArrayAccessExpression $expr): mixed;
+
     public function visitBinary(BinaryExpression $expr): mixed;
 
     public function visitLiteral(LiteralExpression $expr): mixed;

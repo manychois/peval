@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Manychois\Peval\Tokenisation;
 
 use LogicException;
-use ParseError;
+use Manychois\Peval\ExpressionParseException;
 use PhpToken;
 
 class TokenStream
@@ -58,7 +58,7 @@ class TokenStream
         return $current;
     }
 
-    public function createParseError(string $message = ''): ParseError
+    public function createParseException(string $message = ''): ExpressionParseException
     {
         $current = $this->current();
         if ('' === $message) {
@@ -66,13 +66,13 @@ class TokenStream
         }
         $message .= sprintf(' at line %d, column %d', $current->line, $current->column);
 
-        return new ParseError($message);
+        return new ExpressionParseException($message);
     }
 
     public function current(): Token
     {
         if ($this->isEof()) {
-            throw new ParseError('Unexpected end of input');
+            throw new ExpressionParseException('Unexpected end of input');
         }
 
         return $this->tokens[$this->current];
@@ -115,10 +115,12 @@ class TokenStream
     private static function getTokenType(PhpToken $phpToken): TokenType
     {
         $tokenType = match ($phpToken->id) {
+            \T_ARRAY => TokenType::ARRAY,
             \T_BOOLEAN_AND => TokenType::WORD_AND,
             \T_BOOLEAN_OR => TokenType::WORD_OR,
             \T_CONSTANT_ENCAPSED_STRING, \T_ENCAPSED_AND_WHITESPACE => TokenType::STRING,
             \T_CURLY_OPEN => TokenType::LEFT_BRACE,
+            \T_DOUBLE_ARROW => TokenType::DOUBLE_ARROW,
             \T_DNUMBER => TokenType::FLOAT,
             \T_IS_EQUAL => TokenType::EQUAL,
             \T_IS_GREATER_OR_EQUAL => TokenType::GREATER_EQUAL,
@@ -150,6 +152,9 @@ class TokenStream
                 '.' => TokenType::DOT,
                 '"' => TokenType::QUOTE,
                 '}' => TokenType::RIGHT_BRACE,
+                '[' => TokenType::LEFT_BRACKET,
+                ']' => TokenType::RIGHT_BRACKET,
+                ',' => TokenType::COMMA,
                 default => null,
             };
         }
