@@ -1,0 +1,40 @@
+<?php
+
+namespace Manychois\PevalTests;
+
+use Manychois\Peval\Expressions\StringInterpolationExpression;
+use Manychois\Peval\Expressions\ExpressionInterface;
+use Manychois\Peval\Expressions\VisitorInterface;
+use PHPUnit\Framework\MockObject\MockObject;
+
+class StringInterpolationExpressionTest extends BaseTestCase
+{
+    public function testAddAndGetInnerExpressions(): void
+    {
+        $exp = new StringInterpolationExpression();
+        $this->assertEmpty($exp->getInnerExpressions());
+
+        /** @var ExpressionInterface&MockObject $mock1 */
+        $mock1 = $this->createMock(ExpressionInterface::class);
+        $exp->addInnerExpression($mock1);
+        $this->assertSame([$mock1], $exp->getInnerExpressions());
+
+        /** @var ExpressionInterface&MockObject $mock2 */
+        $mock2 = $this->createMock(ExpressionInterface::class);
+        $exp->addInnerExpression($mock2);
+        $this->assertSame([$mock1, $mock2], $exp->getInnerExpressions());
+    }
+
+    public function testAccept(): void
+    {
+        $exp = new StringInterpolationExpression();
+
+        /** @var VisitorInterface&MockObject $visitorMock */
+        $visitorMock = $this->createMock(VisitorInterface::class);
+        $visitorMock->expects($this->once())
+            ->method('visitStringInterpolation')
+            ->with($this->identicalTo($exp));
+
+        $exp->accept($visitorMock);
+    }
+}
