@@ -39,24 +39,25 @@ enum TokenType: string
     case NOT = '!';
     case XOR = 'XOR';
 
-    // Keywords
-    case ARRAY = 'ARRAY';
-
-    // Other
-    case VARIABLE = 'VARIABLE';
-    case IDENTIFIER = 'IDENTIFIER';
+    // Brackets and braces
     case LEFT_PARENTHESIS = '(';
     case RIGHT_PARENTHESIS = ')';
     case LEFT_BRACKET = '[';
     case RIGHT_BRACKET = ']';
     case LEFT_BRACE = '{';
     case RIGHT_BRACE = '}';
+
+    // Keywords
+    case ARRAY = 'ARRAY';
+
+    // Other
+    case VARIABLE = 'VARIABLE';
+    case IDENTIFIER = 'IDENTIFIER';
     case COMMA = ',';
     case DOT = '.';
-    case QUESTION = '?';
-    case COLON = ':';
     case QUOTE = '"';
+    case DOUBLE_COLON = '::';
+    case ARROW = '->';
     case DOUBLE_ARROW = '=>';
     case WHITESPACE = ' ';
-    case EOF = 'EOF';
 }

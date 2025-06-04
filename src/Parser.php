@@ -10,6 +10,7 @@ use Manychois\Peval\Expressions\ArrayExpression;
 use Manychois\Peval\Expressions\BinaryExpression;
 use Manychois\Peval\Expressions\ExpressionInterface;
 use Manychois\Peval\Expressions\LiteralExpression;
+use Manychois\Peval\Expressions\PropertyAccessExpression;
 use Manychois\Peval\Expressions\StringInterpolationExpression;
 use Manychois\Peval\Expressions\UnaryExpression;
 use Manychois\Peval\Expressions\VariableExpression;
@@ -184,12 +185,30 @@ class Parser
     private function parsePostfix(TokenStream $lp): ExpressionInterface
     {
         $expr = $this->parsePrimary($lp);
+
+        if ($lp->matchAny(TokenType::DOUBLE_COLON)) {
+            // Static property or method access
+            if (!$lp->matchAny(TokenType::IDENTIFIER)) {
+                throw $lp->createParseException('Expected identifier after "::"');
+            }
+            $prop = new LiteralExpression($lp->previous());
+            $expr = new PropertyAccessExpression($expr, $prop, true);
+        }
+
         while ($lp->matchAny(TokenType::LEFT_BRACKET)) {
             $offset = $this->parseExpression($lp);
             $expr = new ArrayAccessExpression($expr, $offset);
             if (!$lp->matchAny(TokenType::RIGHT_BRACKET)) {
                 throw $lp->createParseException('Expected closing bracket');
             }
+        }
+
+        while ($lp->matchAny(TokenType::ARROW)) {
+            if (!$lp->matchAny(TokenType::IDENTIFIER)) {
+                throw $lp->createParseException('Expected identifier after "->"');
+            }
+            $prop = new LiteralExpression($lp->previous());
+            $expr = new PropertyAccessExpression($expr, $prop, false);
         }
 
         return $expr;
@@ -289,6 +308,21 @@ class Parser
             }
 
             return new ArrayExpression($elements);
+        }
+
+        if ($lp->matchAny(TokenType::IDENTIFIER)) {
+            $identifier = new LiteralExpression($lp->previous());
+            if ($lp->matchAny(TokenType::DOUBLE_COLON)) {
+                // Static property or method access
+                if (!$lp->matchAny(TokenType::IDENTIFIER)) {
+                    throw $lp->createParseException('Expected identifier after "::"');
+                }
+                $prop = new LiteralExpression($lp->previous());
+
+                return new PropertyAccessExpression($identifier, $prop, true);
+            }
+
+            // TODO
         }
 
         throw $lp->createParseException();

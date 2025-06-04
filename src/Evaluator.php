@@ -10,6 +10,7 @@ use Manychois\Peval\Expressions\ArrayExpression;
 use Manychois\Peval\Expressions\BinaryExpression;
 use Manychois\Peval\Expressions\ExpressionInterface;
 use Manychois\Peval\Expressions\LiteralExpression;
+use Manychois\Peval\Expressions\PropertyAccessExpression;
 use Manychois\Peval\Expressions\StringInterpolationExpression;
 use Manychois\Peval\Expressions\UnaryExpression;
 use Manychois\Peval\Expressions\VariableExpression;
@@ -176,6 +177,22 @@ class Evaluator implements VisitorInterface
             TokenType::STRING => $this->evaluateLiteralString($expr->value),
             default => throw new LogicException(sprintf('Unsupported literal type: %s', $expr->value->type->name)),
         };
+    }
+
+    public function visitPropertyAccess(PropertyAccessExpression $expr): mixed
+    {
+        if ($expr->target instanceof LiteralExpression) {
+            $target = $expr->target->value->text;
+        } else {
+            $target = $this->evaluate($expr->target);
+        }
+
+        $property = '';
+        if ($expr->propertyName instanceof LiteralExpression) {
+            $property = $expr->propertyName->value->text;
+        } // TODO: else
+
+        return $expr->isStatic ? $target::{$property} : $target->{$property};
     }
 
     public function visitStringInterpolation(StringInterpolationExpression $expr): mixed

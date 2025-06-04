@@ -121,6 +121,7 @@ class TokenStream
             \T_CONSTANT_ENCAPSED_STRING, \T_ENCAPSED_AND_WHITESPACE => TokenType::STRING,
             \T_CURLY_OPEN => TokenType::LEFT_BRACE,
             \T_DOUBLE_ARROW => TokenType::DOUBLE_ARROW,
+            \T_DOUBLE_COLON => TokenType::DOUBLE_COLON,
             \T_DNUMBER => TokenType::FLOAT,
             \T_IS_EQUAL => TokenType::EQUAL,
             \T_IS_GREATER_OR_EQUAL => TokenType::GREATER_EQUAL,
@@ -132,6 +133,7 @@ class TokenStream
             \T_LOGICAL_AND => TokenType::SYMBOL_AND,
             \T_LOGICAL_OR => TokenType::SYMBOL_OR,
             \T_LOGICAL_XOR => TokenType::XOR,
+            \T_OBJECT_OPERATOR => TokenType::ARROW,
             \T_POW => TokenType::POWER,
             \T_VARIABLE => TokenType::VARIABLE,
             \T_WHITESPACE => TokenType::WHITESPACE,
@@ -163,7 +165,7 @@ class TokenStream
             $tokenType = match ($lower) {
                 'true', 'false' => TokenType::BOOL,
                 'null' => TokenType::NULL,
-                default => null,
+                default => TokenType::IDENTIFIER,
             };
         }
 
