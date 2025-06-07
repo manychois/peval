@@ -8,7 +8,9 @@ use Manychois\Peval\Tokenisation\Token;
 
 class LiteralExpression implements ExpressionInterface
 {
-    public function __construct(public readonly Token $value) {}
+    public function __construct(public readonly Token $value)
+    {
+    }
 
     public function accept(VisitorInterface $visitor): mixed
     {

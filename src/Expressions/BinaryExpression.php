@@ -11,8 +11,9 @@ class BinaryExpression implements ExpressionInterface
     public function __construct(
         public readonly ExpressionInterface $left,
         public readonly Token $operator,
-        public readonly ExpressionInterface $right
-    ) {}
+        public readonly ExpressionInterface $right,
+    ) {
+    }
 
     public function accept(VisitorInterface $visitor): mixed
     {

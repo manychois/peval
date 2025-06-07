@@ -10,7 +10,8 @@ class PropertyAccessExpression implements ExpressionInterface
         public readonly ExpressionInterface $target,
         public readonly ExpressionInterface $propertyName,
         public readonly bool $isStatic,
-    ) {}
+    ) {
+    }
 
     public function accept(VisitorInterface $visitor): mixed
     {

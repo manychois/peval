@@ -14,6 +14,7 @@ return (new PhpCsFixer\Config())
         '@PHP84Migration' => true,
         '@PSR12' => true,
         '@PhpCsFixer' => true,
+        '@Symfony' => true,
         'concat_space' => [
             'spacing' => 'one',
         ],
