@@ -4,13 +4,17 @@ declare(strict_types=1);
 
 namespace Manychois\PevalTests;
 
-use Manychois\Peval\Expressions\StringInterpolationExpression;
 use Manychois\Peval\Expressions\ExpressionInterface;
+use Manychois\Peval\Expressions\StringInterpolationExpression;
 use Manychois\Peval\Expressions\VisitorInterface;
 use PHPUnit\Framework\MockObject\MockObject;
 
 /**
  * Tests for the StringInterpolationExpression class.
+ *
+ * @internal
+ *
+ * @coversNothing
  */
 class StringInterpolationExpressionTest extends BaseTestCase
 {
@@ -34,11 +38,12 @@ class StringInterpolationExpressionTest extends BaseTestCase
     {
         $exp = new StringInterpolationExpression();
 
-        /** @var VisitorInterface&MockObject $visitorMock */
+        /** @var MockObject&VisitorInterface $visitorMock */
         $visitorMock = $this->createMock(VisitorInterface::class);
         $visitorMock->expects($this->once())
             ->method('visitStringInterpolation')
-            ->with($this->identicalTo($exp));
+            ->with($this->identicalTo($exp))
+        ;
 
         $exp->accept($visitorMock);
     }

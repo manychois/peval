@@ -12,6 +12,10 @@ use PHPUnit\Framework\MockObject\MockObject;
 
 /**
  * Tests for the VariableExpression class.
+ *
+ * @internal
+ *
+ * @coversNothing
  */
 class VariableExpressionTest extends BaseTestCase
 {
@@ -27,12 +31,13 @@ class VariableExpressionTest extends BaseTestCase
         $token = new Token(TokenType::VARIABLE, '$y', 5, 1, 6);
         $expr = new VariableExpression($token);
 
-        /** @var VisitorInterface&MockObject $visitorMock */
+        /** @var MockObject&VisitorInterface $visitorMock */
         $visitorMock = $this->createMock(VisitorInterface::class);
         $visitorMock->expects($this->once())
             ->method('visitVariable')
             ->with($this->identicalTo($expr))
-            ->willReturn('variable_result');
+            ->willReturn('variable_result')
+        ;
 
         $result = $expr->accept($visitorMock);
         $this->assertSame('variable_result', $result);
@@ -45,7 +50,7 @@ class VariableExpressionTest extends BaseTestCase
         $expr1 = new VariableExpression($token1);
         $this->assertSame(TokenType::VARIABLE, $expr1->name->type);
         $this->assertSame('$x', $expr1->name->text);
-        
+
         // Test camelCase variable
         $token2 = new Token(TokenType::VARIABLE, '$myVariable', 0, 1, 1);
         $expr2 = new VariableExpression($token2);
@@ -60,7 +65,7 @@ class VariableExpressionTest extends BaseTestCase
         $expr1 = new VariableExpression($token1);
         $this->assertSame(TokenType::VARIABLE, $expr1->name->type);
         $this->assertSame('$my_variable', $expr1->name->text);
-        
+
         // Test variable with numbers
         $token2 = new Token(TokenType::VARIABLE, '$var123', 0, 1, 1);
         $expr2 = new VariableExpression($token2);
@@ -72,7 +77,7 @@ class VariableExpressionTest extends BaseTestCase
     {
         $token = new Token(TokenType::VARIABLE, '$test', 10, 2, 5);
         $expr = new VariableExpression($token);
-        
+
         $this->assertSame(10, $expr->name->position);
         $this->assertSame(2, $expr->name->line);
         $this->assertSame(5, $expr->name->column);

@@ -1,11 +1,18 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Manychois\PevalTests;
 
 use Manychois\Peval\Expressions\ArrayElement;
 use Manychois\Peval\Expressions\ExpressionInterface;
 use PHPUnit\Framework\MockObject\MockObject;
 
+/**
+ * @internal
+ *
+ * @coversNothing
+ */
 class ArrayElementTest extends BaseTestCase
 {
     public function testConstructorAndPropertiesWithValueOnly(): void
@@ -22,6 +29,7 @@ class ArrayElementTest extends BaseTestCase
     {
         /** @var ExpressionInterface&MockObject $valueMock */
         $valueMock = $this->createMock(ExpressionInterface::class);
+
         /** @var ExpressionInterface&MockObject $keyMock */
         $keyMock = $this->createMock(ExpressionInterface::class);
 

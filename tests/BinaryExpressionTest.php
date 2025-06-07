@@ -13,6 +13,10 @@ use PHPUnit\Framework\MockObject\MockObject;
 
 /**
  * Tests for the BinaryExpression class.
+ *
+ * @internal
+ *
+ * @coversNothing
  */
 class BinaryExpressionTest extends BaseTestCase
 {
@@ -20,14 +24,14 @@ class BinaryExpressionTest extends BaseTestCase
     {
         /** @var ExpressionInterface&MockObject $leftMock */
         $leftMock = $this->createMock(ExpressionInterface::class);
-        
+
         /** @var ExpressionInterface&MockObject $rightMock */
         $rightMock = $this->createMock(ExpressionInterface::class);
-        
+
         $operatorToken = new Token(TokenType::PLUS, '+', 0, 1, 1);
-        
+
         $expr = new BinaryExpression($leftMock, $operatorToken, $rightMock);
-        
+
         $this->assertSame($leftMock, $expr->left);
         $this->assertSame($operatorToken, $expr->operator);
         $this->assertSame($rightMock, $expr->right);
@@ -37,19 +41,20 @@ class BinaryExpressionTest extends BaseTestCase
     {
         /** @var ExpressionInterface&MockObject $leftMock */
         $leftMock = $this->createMock(ExpressionInterface::class);
-        
+
         /** @var ExpressionInterface&MockObject $rightMock */
         $rightMock = $this->createMock(ExpressionInterface::class);
-        
+
         $operatorToken = new Token(TokenType::MULTIPLY, '*', 5, 1, 6);
         $expr = new BinaryExpression($leftMock, $operatorToken, $rightMock);
 
-        /** @var VisitorInterface&MockObject $visitorMock */
+        /** @var MockObject&VisitorInterface $visitorMock */
         $visitorMock = $this->createMock(VisitorInterface::class);
         $visitorMock->expects($this->once())
             ->method('visitBinary')
             ->with($this->identicalTo($expr))
-            ->willReturn('test_result');
+            ->willReturn('test_result')
+        ;
 
         $result = $expr->accept($visitorMock);
         $this->assertSame('test_result', $result);
@@ -59,15 +64,15 @@ class BinaryExpressionTest extends BaseTestCase
     {
         /** @var ExpressionInterface&MockObject $leftMock */
         $leftMock = $this->createMock(ExpressionInterface::class);
-        
+
         /** @var ExpressionInterface&MockObject $rightMock */
         $rightMock = $this->createMock(ExpressionInterface::class);
-        
+
         // Test addition
         $plusToken = new Token(TokenType::PLUS, '+', 0, 1, 1);
         $expr = new BinaryExpression($leftMock, $plusToken, $rightMock);
         $this->assertSame(TokenType::PLUS, $expr->operator->type);
-        
+
         // Test multiplication
         $multiplyToken = new Token(TokenType::MULTIPLY, '*', 0, 1, 1);
         $expr2 = new BinaryExpression($leftMock, $multiplyToken, $rightMock);
@@ -78,15 +83,15 @@ class BinaryExpressionTest extends BaseTestCase
     {
         /** @var ExpressionInterface&MockObject $leftMock */
         $leftMock = $this->createMock(ExpressionInterface::class);
-        
+
         /** @var ExpressionInterface&MockObject $rightMock */
         $rightMock = $this->createMock(ExpressionInterface::class);
-        
+
         // Test less than
         $lessToken = new Token(TokenType::LESS, '<', 0, 1, 1);
         $expr = new BinaryExpression($leftMock, $lessToken, $rightMock);
         $this->assertSame(TokenType::LESS, $expr->operator->type);
-        
+
         // Test equality
         $equalToken = new Token(TokenType::EQUAL, '==', 0, 1, 1);
         $expr2 = new BinaryExpression($leftMock, $equalToken, $rightMock);
@@ -97,15 +102,15 @@ class BinaryExpressionTest extends BaseTestCase
     {
         /** @var ExpressionInterface&MockObject $leftMock */
         $leftMock = $this->createMock(ExpressionInterface::class);
-        
+
         /** @var ExpressionInterface&MockObject $rightMock */
         $rightMock = $this->createMock(ExpressionInterface::class);
-        
+
         // Test logical AND
         $andToken = new Token(TokenType::SYMBOL_AND, '&&', 0, 1, 1);
         $expr = new BinaryExpression($leftMock, $andToken, $rightMock);
         $this->assertSame(TokenType::SYMBOL_AND, $expr->operator->type);
-        
+
         // Test logical OR
         $orToken = new Token(TokenType::SYMBOL_OR, '||', 0, 1, 1);
         $expr2 = new BinaryExpression($leftMock, $orToken, $rightMock);

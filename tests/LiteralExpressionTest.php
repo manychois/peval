@@ -12,6 +12,10 @@ use PHPUnit\Framework\MockObject\MockObject;
 
 /**
  * Tests for the LiteralExpression class.
+ *
+ * @internal
+ *
+ * @coversNothing
  */
 class LiteralExpressionTest extends BaseTestCase
 {
@@ -27,12 +31,13 @@ class LiteralExpressionTest extends BaseTestCase
         $token = new Token(TokenType::STRING, 'hello', 5, 1, 6);
         $expr = new LiteralExpression($token);
 
-        /** @var VisitorInterface&MockObject $visitorMock */
+        /** @var MockObject&VisitorInterface $visitorMock */
         $visitorMock = $this->createMock(VisitorInterface::class);
         $visitorMock->expects($this->once())
             ->method('visitLiteral')
             ->with($this->identicalTo($expr))
-            ->willReturn('literal_result');
+            ->willReturn('literal_result')
+        ;
 
         $result = $expr->accept($visitorMock);
         $this->assertSame('literal_result', $result);
@@ -45,7 +50,7 @@ class LiteralExpressionTest extends BaseTestCase
         $expr = new LiteralExpression($trueToken);
         $this->assertSame(TokenType::BOOL, $expr->value->type);
         $this->assertSame('true', $expr->value->text);
-        
+
         // Test false boolean
         $falseToken = new Token(TokenType::BOOL, 'false', 0, 1, 1);
         $expr2 = new LiteralExpression($falseToken);
@@ -60,7 +65,7 @@ class LiteralExpressionTest extends BaseTestCase
         $expr = new LiteralExpression($intToken);
         $this->assertSame(TokenType::INTEGER, $expr->value->type);
         $this->assertSame('42', $expr->value->text);
-        
+
         // Test float
         $floatToken = new Token(TokenType::FLOAT, '3.14', 0, 1, 1);
         $expr2 = new LiteralExpression($floatToken);
@@ -75,7 +80,7 @@ class LiteralExpressionTest extends BaseTestCase
         $expr = new LiteralExpression($stringToken);
         $this->assertSame(TokenType::STRING, $expr->value->type);
         $this->assertSame('hello world', $expr->value->text);
-        
+
         // Test null
         $nullToken = new Token(TokenType::NULL, 'null', 0, 1, 1);
         $expr2 = new LiteralExpression($nullToken);

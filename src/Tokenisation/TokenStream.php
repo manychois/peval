@@ -20,7 +20,7 @@ class TokenStream
 
     public function __construct(string $source)
     {
-        $linePosLookup = [0];
+        $linePosLookup = [-1];
         $offset = 0;
         while (true) {
             $linePos = strpos($source, "\n", $offset);
@@ -43,7 +43,7 @@ class TokenStream
                 $phpToken->text,
                 $phpToken->pos - 6,
                 $phpToken->line - 1,
-                $phpToken->pos - $linePosLookup[$phpToken->line - 2] - 5
+                $phpToken->pos - $linePosLookup[$phpToken->line - 2] - 6
             );
         }
 
@@ -116,8 +116,8 @@ class TokenStream
     {
         $tokenType = match ($phpToken->id) {
             \T_ARRAY => TokenType::ARRAY,
-            \T_BOOLEAN_AND => TokenType::WORD_AND,
-            \T_BOOLEAN_OR => TokenType::WORD_OR,
+            \T_BOOLEAN_AND => TokenType::SYMBOL_AND,
+            \T_BOOLEAN_OR => TokenType::SYMBOL_OR,
             \T_CONSTANT_ENCAPSED_STRING, \T_ENCAPSED_AND_WHITESPACE => TokenType::STRING,
             \T_CURLY_OPEN => TokenType::LEFT_BRACE,
             \T_DOUBLE_ARROW => TokenType::DOUBLE_ARROW,
@@ -130,8 +130,8 @@ class TokenStream
             \T_IS_NOT_IDENTICAL => TokenType::NOT_IDENTICAL,
             \T_IS_SMALLER_OR_EQUAL => TokenType::LESS_EQUAL,
             \T_LNUMBER => TokenType::INTEGER,
-            \T_LOGICAL_AND => TokenType::SYMBOL_AND,
-            \T_LOGICAL_OR => TokenType::SYMBOL_OR,
+            \T_LOGICAL_AND => TokenType::WORD_AND,
+            \T_LOGICAL_OR => TokenType::WORD_OR,
             \T_LOGICAL_XOR => TokenType::XOR,
             \T_OBJECT_OPERATOR => TokenType::ARROW,
             \T_POW => TokenType::POWER,

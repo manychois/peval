@@ -1,18 +1,26 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Manychois\PevalTests;
 
-use Manychois\Peval\Expressions\PropertyAccessExpression;
 use Manychois\Peval\Expressions\ExpressionInterface;
+use Manychois\Peval\Expressions\PropertyAccessExpression;
 use Manychois\Peval\Expressions\VisitorInterface;
 use PHPUnit\Framework\MockObject\MockObject;
 
+/**
+ * @internal
+ *
+ * @coversNothing
+ */
 class PropertyAccessExpressionTest extends BaseTestCase
 {
     public function testConstructorAndProperties(): void
     {
         /** @var ExpressionInterface&MockObject $targetMock */
         $targetMock = $this->createMock(ExpressionInterface::class);
+
         /** @var ExpressionInterface&MockObject $propertyNameMock */
         $propertyNameMock = $this->createMock(ExpressionInterface::class);
 
@@ -33,16 +41,18 @@ class PropertyAccessExpressionTest extends BaseTestCase
     {
         /** @var ExpressionInterface&MockObject $targetMock */
         $targetMock = $this->createMock(ExpressionInterface::class);
+
         /** @var ExpressionInterface&MockObject $propertyNameMock */
         $propertyNameMock = $this->createMock(ExpressionInterface::class);
 
         $exp = new PropertyAccessExpression($targetMock, $propertyNameMock, false);
 
-        /** @var VisitorInterface&MockObject $visitorMock */
+        /** @var MockObject&VisitorInterface $visitorMock */
         $visitorMock = $this->createMock(VisitorInterface::class);
         $visitorMock->expects($this->once())
             ->method('visitPropertyAccess')
-            ->with($this->identicalTo($exp));
+            ->with($this->identicalTo($exp))
+        ;
 
         $exp->accept($visitorMock);
     }
