@@ -2,11 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Manychois\PevalTests;
+namespace Manychois\PevalTests\Expressions;
 
 use Manychois\Peval\Expressions\ArrayAccessExpression;
 use Manychois\Peval\Expressions\ExpressionInterface;
 use Manychois\Peval\Expressions\VisitorInterface;
+use Manychois\PevalTests\BaseTestCase;
 use PHPUnit\Framework\MockObject\MockObject;
 
 /**

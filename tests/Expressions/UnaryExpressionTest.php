@@ -2,13 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Manychois\PevalTests;
+namespace Manychois\PevalTests\Expressions;
 
 use Manychois\Peval\Expressions\ExpressionInterface;
 use Manychois\Peval\Expressions\UnaryExpression;
 use Manychois\Peval\Expressions\VisitorInterface;
 use Manychois\Peval\Tokenisation\Token;
 use Manychois\Peval\Tokenisation\TokenType;
+use Manychois\PevalTests\BaseTestCase;
 use PHPUnit\Framework\MockObject\MockObject;
 
 /**

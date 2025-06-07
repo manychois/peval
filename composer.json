@@ -1,5 +1,7 @@
 {
   "name": "manychois/peval",
+  "description": "A PHP package for evaluating expressions with support for variables, functions, and operators.",
+  "license": "MIT",
   "autoload": {
     "psr-4": {
       "Manychois\\Peval\\": "src/"

@@ -6,4 +6,6 @@ namespace Manychois\Peval;
 
 use LogicException;
 
-class ExpressionParseException extends LogicException {}
+class ExpressionParseException extends LogicException
+{
+}

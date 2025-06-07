@@ -2,12 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Manychois\PevalTests;
+namespace Manychois\PevalTests\Expressions;
 
 use Manychois\Peval\Expressions\ArrayElement;
 use Manychois\Peval\Expressions\ArrayExpression;
 use Manychois\Peval\Expressions\ExpressionInterface;
 use Manychois\Peval\Expressions\VisitorInterface;
+use Manychois\PevalTests\BaseTestCase;
 use PHPUnit\Framework\MockObject\MockObject;
 
 /**

@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Manychois\PevalTests;
+namespace Manychois\PevalTests\Tokenisation;
 
 use LogicException;
 use Manychois\Peval\ExpressionParseException;
-use Manychois\Peval\Tokenisation\Token;
 use Manychois\Peval\Tokenisation\TokenStream;
 use Manychois\Peval\Tokenisation\TokenType;
+use Manychois\PevalTests\BaseTestCase;
 
 /**
  * Tests for the TokenStream class.

@@ -8,6 +8,7 @@ final class ArrayElement
 {
     public function __construct(
         public readonly ExpressionInterface $value,
-        public readonly ?ExpressionInterface $key = null
-    ) {}
+        public readonly ?ExpressionInterface $key = null,
+    ) {
+    }
 }
