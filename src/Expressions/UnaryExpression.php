@@ -10,8 +10,9 @@ class UnaryExpression implements ExpressionInterface
 {
     public function __construct(
         public readonly Token $operator,
-        public readonly ExpressionInterface $expression
-    ) {}
+        public readonly ExpressionInterface $operand,
+    ) {
+    }
 
     public function accept(VisitorInterface $visitor): mixed
     {

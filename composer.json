@@ -1,8 +1,15 @@
 {
   "name": "manychois/peval",
+  "description": "A PHP package for evaluating expressions with support for variables, functions, and operators.",
+  "license": "MIT",
   "autoload": {
     "psr-4": {
       "Manychois\\Peval\\": "src/"
+    }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "Manychois\\PevalTests\\": "tests/"
     }
   },
   "authors": [
@@ -16,14 +23,16 @@
   },
   "require-dev": {
     "friendsofphp/php-cs-fixer": "^3.75",
-    "phpstan/phpstan": "^2.1"
+    "phpstan/phpstan": "^2.1",
+    "phpunit/phpunit": "^12.2"
   },
   "scripts": {
     "code": [
       "composer run cs-fix",
       "composer run phpstan"
     ],
-    "cs-fix": "PHP_CS_FIXER_IGNORE_ENV=1 php-cs-fixer fix .",
-    "phpstan": "phpstan analyse -c phpstan.neon"
+    "cs-fix": "PHP_CS_FIXER_IGNORE_ENV=1 php-cs-fixer fix",
+    "phpstan": "phpstan analyse",
+    "test": "phpunit"
   }
 }

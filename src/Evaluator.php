@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Manychois\Peval;
 
+use IntlChar;
 use LogicException;
 use Manychois\Peval\Expressions\ArrayAccessExpression;
 use Manychois\Peval\Expressions\ArrayExpression;
@@ -116,7 +117,7 @@ class Evaluator implements VisitorInterface
                 return $value;
             }
             $message = sprintf(
-                'Invalid %s operand for mathematical operator at line %d, column %d, found %s.',
+                'Invalid %s operand for mathematical operator at line %d, column %d, found %s',
                 $leftOrRight,
                 $expr->operator->line,
                 $expr->operator->column,
@@ -134,7 +135,7 @@ class Evaluator implements VisitorInterface
                 return (string) $value;
             }
             $message = sprintf(
-                'Invalid %s operand for concatenation operator at line %d, column %d, found %s.',
+                'Invalid %s operand for concatenation operator at line %d, column %d, found %s',
                 $leftOrRight,
                 $expr->operator->line,
                 $expr->operator->column,
@@ -213,7 +214,7 @@ class Evaluator implements VisitorInterface
                 if (null === $value || is_scalar($value) || is_object($value) && method_exists($value, '__toString')) {
                     $value = (string) $value;
                 } else {
-                    throw new LogicException(sprintf('Invalid value in interpolation string, found %s.', get_debug_type($value)));
+                    throw new LogicException(sprintf('Invalid value in interpolation string, found %s', get_debug_type($value)));
                 }
             }
             $result .= $value;
@@ -224,14 +225,14 @@ class Evaluator implements VisitorInterface
 
     public function visitUnary(UnaryExpression $expr): mixed
     {
-        $value = $this->evaluate($expr->expression);
+        $value = $this->evaluate($expr->operand);
 
         $numeric = function (mixed $value) use ($expr): int|float|string {
             if (is_numeric($value)) {
                 return $value;
             }
             $message = sprintf(
-                'Invalid operand for unary operator at line %d, column %d, found %s.',
+                'Invalid operand for unary operator at line %d, column %d, found %s',
                 $expr->operator->line,
                 $expr->operator->column,
                 get_debug_type($value)
@@ -276,7 +277,7 @@ class Evaluator implements VisitorInterface
 
     private function evaluateDoubleQuoteString(string $content): string
     {
-        $pattern = '/\\\([nrtvef\$"]|[0-7]{1,3}|x[0-9A-Fa-f]{1,2}|u{[0-9A-Fa-f]+})/';
+        $pattern = '/\\\([nrtvef\\\$"]|[0-7]{1,3}|x[0-9A-Fa-f]{1,2}|u\{([0-9A-Fa-f]+)\})/';
         $callback = function (array $matches): string {
             assert(isset($matches[1]) && is_string($matches[1]));
             $ch0 = $matches[1][0];
@@ -297,9 +298,11 @@ class Evaluator implements VisitorInterface
             if ('x' === $ch0) {
                 $value = chr((int) hexdec(substr($matches[1], 1)));
             } elseif ('u' === $ch0) {
-                $value = mb_convert_encoding('&#x' . substr($matches[1], 1) . ';', 'UTF-8', 'HTML-ENTITIES');
-                if (!is_string($value)) {
-                    throw new LogicException(sprintf('Invalid Unicode escape sequence: %s', $matches[1]));
+                assert(isset($matches[2]) && is_string($matches[2]));
+                $value = IntlChar::chr((int) hexdec($matches[2]));
+                // @phpstan-ignore identical.alwaysFalse
+                if (null === $value) {
+                    throw new LogicException(sprintf('Invalid Unicode escape sequence: %s', $matches[2]));
                 }
             } else {
                 $value = chr((int) octdec($matches[1]));
