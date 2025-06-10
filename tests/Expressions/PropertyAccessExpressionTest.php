@@ -7,7 +7,7 @@ namespace Manychois\PevalTests\Expressions;
 use Manychois\Peval\Expressions\ExpressionInterface;
 use Manychois\Peval\Expressions\PropertyAccessExpression;
 use Manychois\Peval\Expressions\VisitorInterface;
-use Manychois\PevalTests\BaseTestCase;
+use Manychois\PevalTests\AbstractBaseTestCase;
 use PHPUnit\Framework\MockObject\MockObject;
 
 /**
@@ -15,7 +15,7 @@ use PHPUnit\Framework\MockObject\MockObject;
  *
  * @coversNothing
  */
-class PropertyAccessExpressionTest extends BaseTestCase
+class PropertyAccessExpressionTest extends AbstractBaseTestCase
 {
     public function testConstructorAndProperties(): void
     {

@@ -8,7 +8,7 @@ use LogicException;
 use Manychois\Peval\ExpressionParseException;
 use Manychois\Peval\Tokenisation\TokenStream;
 use Manychois\Peval\Tokenisation\TokenType;
-use Manychois\PevalTests\BaseTestCase;
+use Manychois\PevalTests\AbstractBaseTestCase;
 
 /**
  * Tests for the TokenStream class.
@@ -17,7 +17,7 @@ use Manychois\PevalTests\BaseTestCase;
  *
  * @coversNothing
  */
-class TokenStreamTest extends BaseTestCase
+class TokenStreamTest extends AbstractBaseTestCase
 {
     public function testConstructorWithSimpleExpression(): void
     {

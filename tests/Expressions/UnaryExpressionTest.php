@@ -9,7 +9,7 @@ use Manychois\Peval\Expressions\UnaryExpression;
 use Manychois\Peval\Expressions\VisitorInterface;
 use Manychois\Peval\Tokenisation\Token;
 use Manychois\Peval\Tokenisation\TokenType;
-use Manychois\PevalTests\BaseTestCase;
+use Manychois\PevalTests\AbstractBaseTestCase;
 use PHPUnit\Framework\MockObject\MockObject;
 
 /**
@@ -19,7 +19,7 @@ use PHPUnit\Framework\MockObject\MockObject;
  *
  * @coversNothing
  */
-class UnaryExpressionTest extends BaseTestCase
+class UnaryExpressionTest extends AbstractBaseTestCase
 {
     public function testConstructorAndProperties(): void
     {
@@ -29,7 +29,7 @@ class UnaryExpressionTest extends BaseTestCase
 
         $expr = new UnaryExpression($operatorToken, $expressionMock);
         $this->assertSame($operatorToken, $expr->operator);
-        $this->assertSame($expressionMock, $expr->expression);
+        $this->assertSame($expressionMock, $expr->operand);
     }
 
     public function testAccept(): void
@@ -62,7 +62,7 @@ class UnaryExpressionTest extends BaseTestCase
 
         $this->assertSame(TokenType::MINUS, $expr->operator->type);
         $this->assertSame('-', $expr->operator->text);
-        $this->assertSame($expressionMock, $expr->expression);
+        $this->assertSame($expressionMock, $expr->operand);
     }
 
     public function testWithUnaryPlus(): void
@@ -75,7 +75,7 @@ class UnaryExpressionTest extends BaseTestCase
 
         $this->assertSame(TokenType::PLUS, $expr->operator->type);
         $this->assertSame('+', $expr->operator->text);
-        $this->assertSame($expressionMock, $expr->expression);
+        $this->assertSame($expressionMock, $expr->operand);
     }
 
     public function testWithLogicalNot(): void
@@ -88,6 +88,6 @@ class UnaryExpressionTest extends BaseTestCase
 
         $this->assertSame(TokenType::NOT, $expr->operator->type);
         $this->assertSame('!', $expr->operator->text);
-        $this->assertSame($expressionMock, $expr->expression);
+        $this->assertSame($expressionMock, $expr->operand);
     }
 }

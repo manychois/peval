@@ -6,6 +6,6 @@ namespace Manychois\PevalTests;
 
 use PHPUnit\Framework\TestCase;
 
-abstract class BaseTestCase extends TestCase
+abstract class AbstractBaseTestCase extends TestCase
 {
 }

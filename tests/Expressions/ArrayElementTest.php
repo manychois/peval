@@ -6,7 +6,7 @@ namespace Manychois\PevalTests\Expressions;
 
 use Manychois\Peval\Expressions\ArrayElement;
 use Manychois\Peval\Expressions\ExpressionInterface;
-use Manychois\PevalTests\BaseTestCase;
+use Manychois\PevalTests\AbstractBaseTestCase;
 use PHPUnit\Framework\MockObject\MockObject;
 
 /**
@@ -14,7 +14,7 @@ use PHPUnit\Framework\MockObject\MockObject;
  *
  * @coversNothing
  */
-class ArrayElementTest extends BaseTestCase
+class ArrayElementTest extends AbstractBaseTestCase
 {
     public function testConstructorAndPropertiesWithValueOnly(): void
     {

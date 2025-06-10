@@ -9,7 +9,7 @@ use Manychois\Peval\Expressions\ExpressionInterface;
 use Manychois\Peval\Expressions\VisitorInterface;
 use Manychois\Peval\Tokenisation\Token;
 use Manychois\Peval\Tokenisation\TokenType;
-use Manychois\PevalTests\BaseTestCase;
+use Manychois\PevalTests\AbstractBaseTestCase;
 use PHPUnit\Framework\MockObject\MockObject;
 
 /**
@@ -19,7 +19,7 @@ use PHPUnit\Framework\MockObject\MockObject;
  *
  * @coversNothing
  */
-class BinaryExpressionTest extends BaseTestCase
+class BinaryExpressionTest extends AbstractBaseTestCase
 {
     public function testConstructorAndProperties(): void
     {
