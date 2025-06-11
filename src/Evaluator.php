@@ -90,7 +90,7 @@ class Evaluator implements VisitorInterface
             return $target[$offset];
         }
 
-        if (isset($target->{$offset})) {
+        if (property_exists($target, $offset)) {
             return $target->{$offset};
         }
 
