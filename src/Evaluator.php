@@ -189,7 +189,9 @@ class Evaluator implements VisitorInterface
         foreach ($expr->arguments as $arg) {
             $args[] = $this->evaluate($arg);
         }
-        assert(is_callable($funcName, true));
+        if (!is_callable($funcName, true)) {
+            throw new LogicException(sprintf('Function "%s" is not callable.', $funcName));
+        }
 
         return call_user_func_array($funcName, $args);
     }
