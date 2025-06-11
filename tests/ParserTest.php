@@ -457,7 +457,8 @@ class ParserTest extends AbstractBaseTestCase
                 "propertyName": {
                     "type": "Literal",
                     "value": "IDENTIFIER(CONSTANT_A) at (1, 10)"
-                }
+                },
+                "isStatic": true
             }
             JSON;
         $this->assertSame($expected, $result);
@@ -478,7 +479,8 @@ class ParserTest extends AbstractBaseTestCase
                 "propertyName": {
                     "type": "Literal",
                     "value": "IDENTIFIER(CONSTANT_A) at (1, 5)"
-                }
+                },
+                "isStatic": true
             }
             JSON;
         $this->assertSame($expected, $result);
@@ -499,7 +501,8 @@ class ParserTest extends AbstractBaseTestCase
                 "propertyName": {
                     "type": "Literal",
                     "value": "IDENTIFIER(property) at (1, 7)"
-                }
+                },
+                "isStatic": false
             }
             JSON;
         $this->assertSame($expected, $result);

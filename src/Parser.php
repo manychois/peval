@@ -9,7 +9,9 @@ use Manychois\Peval\Expressions\ArrayElement;
 use Manychois\Peval\Expressions\ArrayExpression;
 use Manychois\Peval\Expressions\BinaryExpression;
 use Manychois\Peval\Expressions\ExpressionInterface;
+use Manychois\Peval\Expressions\FunctionCallExpression;
 use Manychois\Peval\Expressions\LiteralExpression;
+use Manychois\Peval\Expressions\MethodCallExpression;
 use Manychois\Peval\Expressions\PropertyAccessExpression;
 use Manychois\Peval\Expressions\StringInterpolationExpression;
 use Manychois\Peval\Expressions\UnaryExpression;
@@ -186,13 +188,52 @@ class Parser
     {
         $expr = $this->parsePrimary($lp);
 
+        // static property access or method call
         if ($lp->matchAny(TokenType::DOUBLE_COLON)) {
-            // Static property or method access
             if (!$lp->matchAny(TokenType::IDENTIFIER)) {
                 throw $lp->createParseException('Expected identifier after "::"');
             }
             $prop = new LiteralExpression($lp->previous());
+            if ($lp->matchAny(TokenType::LEFT_PARENTHESIS)) {
+                $arguments = [];
+                while (!$lp->matchAny(TokenType::RIGHT_PARENTHESIS)) {
+                    $arguments[] = $this->parseExpression($lp);
+                    if ($lp->matchAny(TokenType::COMMA, TokenType::RIGHT_PARENTHESIS)) {
+                        if (TokenType::RIGHT_PARENTHESIS === $lp->previous()->type) {
+                            break;
+                        }
+                    } else {
+                        throw $lp->createParseException('Expected comma or closing parenthesis');
+                    }
+                }
+
+                return new MethodCallExpression($expr, $prop, $arguments, true);
+            }
             $expr = new PropertyAccessExpression($expr, $prop, true);
+        }
+
+        // instance property access or method call
+        while ($lp->matchAny(TokenType::ARROW)) {
+            if (!$lp->matchAny(TokenType::IDENTIFIER)) {
+                throw $lp->createParseException('Expected identifier after "->"');
+            }
+            $prop = new LiteralExpression($lp->previous());
+            if ($lp->matchAny(TokenType::LEFT_PARENTHESIS)) {
+                $arguments = [];
+                while (!$lp->matchAny(TokenType::RIGHT_PARENTHESIS)) {
+                    $arguments[] = $this->parseExpression($lp);
+                    if ($lp->matchAny(TokenType::COMMA, TokenType::RIGHT_PARENTHESIS)) {
+                        if (TokenType::RIGHT_PARENTHESIS === $lp->previous()->type) {
+                            break;
+                        }
+                    } else {
+                        throw $lp->createParseException('Expected comma or closing parenthesis');
+                    }
+                }
+
+                return new MethodCallExpression($expr, $prop, $arguments, false);
+            }
+            $expr = new PropertyAccessExpression($expr, $prop, false);
         }
 
         while ($lp->matchAny(TokenType::LEFT_BRACKET)) {
@@ -201,14 +242,6 @@ class Parser
             if (!$lp->matchAny(TokenType::RIGHT_BRACKET)) {
                 throw $lp->createParseException('Expected closing bracket');
             }
-        }
-
-        while ($lp->matchAny(TokenType::ARROW)) {
-            if (!$lp->matchAny(TokenType::IDENTIFIER)) {
-                throw $lp->createParseException('Expected identifier after "->"');
-            }
-            $prop = new LiteralExpression($lp->previous());
-            $expr = new PropertyAccessExpression($expr, $prop, false);
         }
 
         return $expr;
@@ -321,8 +354,21 @@ class Parser
 
                 return new PropertyAccessExpression($identifier, $prop, true);
             }
+            if ($lp->matchAny(TokenType::LEFT_PARENTHESIS)) {
+                $arguments = [];
+                while (!$lp->matchAny(TokenType::RIGHT_PARENTHESIS)) {
+                    $arguments[] = $this->parseExpression($lp);
+                    if ($lp->matchAny(TokenType::COMMA, TokenType::RIGHT_PARENTHESIS)) {
+                        if (TokenType::RIGHT_PARENTHESIS === $lp->previous()->type) {
+                            break;
+                        }
+                    } else {
+                        throw $lp->createParseException('Expected comma or closing parenthesis');
+                    }
+                }
 
-            // TODO
+                return new FunctionCallExpression($identifier, $arguments);
+            }
         }
 
         throw $lp->createParseException();

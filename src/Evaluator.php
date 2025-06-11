@@ -10,7 +10,9 @@ use Manychois\Peval\Expressions\ArrayAccessExpression;
 use Manychois\Peval\Expressions\ArrayExpression;
 use Manychois\Peval\Expressions\BinaryExpression;
 use Manychois\Peval\Expressions\ExpressionInterface;
+use Manychois\Peval\Expressions\FunctionCallExpression;
 use Manychois\Peval\Expressions\LiteralExpression;
+use Manychois\Peval\Expressions\MethodCallExpression;
 use Manychois\Peval\Expressions\PropertyAccessExpression;
 use Manychois\Peval\Expressions\StringInterpolationExpression;
 use Manychois\Peval\Expressions\UnaryExpression;
@@ -168,6 +170,26 @@ class Evaluator implements VisitorInterface
         };
     }
 
+    public function visitFunctionCall(FunctionCallExpression $expr): mixed
+    {
+        if ($expr->name instanceof LiteralExpression) {
+            $funcName = $expr->name->value->text;
+        } else {
+            $funcName = $this->evaluate($expr->name);
+        }
+        if (!is_string($funcName)) {
+            throw new LogicException(sprintf('Function name must be a string, found %s', get_debug_type($funcName)));
+        }
+
+        $args = [];
+        foreach ($expr->arguments as $arg) {
+            $args[] = $this->evaluate($arg);
+        }
+        assert(is_callable($funcName, true));
+
+        return call_user_func_array($funcName, $args);
+    }
+
     public function visitLiteral(LiteralExpression $expr): mixed
     {
         return match ($expr->value->type) {
@@ -178,6 +200,40 @@ class Evaluator implements VisitorInterface
             TokenType::STRING => $this->evaluateLiteralString($expr->value),
             default => throw new LogicException(sprintf('Unsupported literal type: %s', $expr->value->type->name)),
         };
+    }
+
+    public function visitMethodCall(MethodCallExpression $expr): mixed
+    {
+        if ($expr->target instanceof LiteralExpression) {
+            $target = $expr->target->value->text;
+        } else {
+            $target = $this->evaluate($expr->target);
+        }
+
+        if (!is_object($target)) {
+            throw new LogicException(sprintf('Cannot call method on non-object of type %s', get_debug_type($target)));
+        }
+
+        if ($expr->methodName instanceof LiteralExpression) {
+            $methodName = $expr->methodName->value->text;
+        } else {
+            $methodName = $this->evaluate($expr->methodName);
+        }
+
+        if (!is_string($methodName)) {
+            throw new LogicException(sprintf('Method name must be a string, found %s', get_debug_type($methodName)));
+        }
+        $args = [];
+        foreach ($expr->arguments as $arg) {
+            $args[] = $this->evaluate($arg);
+        }
+
+        $callable = [$target, $methodName];
+        if (!is_callable($callable, true)) {
+            throw new LogicException(sprintf('Method %s%s%s is not callable', get_debug_type($target), $expr->isStatic ? '::' : '->', $methodName));
+        }
+
+        return call_user_func_array($callable, $args);
     }
 
     public function visitPropertyAccess(PropertyAccessExpression $expr): mixed

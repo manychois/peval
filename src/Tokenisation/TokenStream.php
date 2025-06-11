@@ -133,6 +133,7 @@ class TokenStream
             \T_LOGICAL_AND => TokenType::WORD_AND,
             \T_LOGICAL_OR => TokenType::WORD_OR,
             \T_LOGICAL_XOR => TokenType::XOR,
+            \T_NAME_FULLY_QUALIFIED => TokenType::IDENTIFIER,
             \T_OBJECT_OPERATOR => TokenType::ARROW,
             \T_POW => TokenType::POWER,
             \T_VARIABLE => TokenType::VARIABLE,

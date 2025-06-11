@@ -12,7 +12,11 @@ interface VisitorInterface
 
     public function visitBinary(BinaryExpression $expr): mixed;
 
+    public function visitFunctionCall(FunctionCallExpression $expr): mixed;
+
     public function visitLiteral(LiteralExpression $expr): mixed;
+
+    public function visitMethodCall(MethodCallExpression $expr): mixed;
 
     public function visitPropertyAccess(PropertyAccessExpression $expr): mixed;
 

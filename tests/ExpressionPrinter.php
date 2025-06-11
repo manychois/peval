@@ -8,7 +8,9 @@ use Manychois\Peval\Expressions\ArrayAccessExpression;
 use Manychois\Peval\Expressions\ArrayExpression;
 use Manychois\Peval\Expressions\BinaryExpression;
 use Manychois\Peval\Expressions\ExpressionInterface;
+use Manychois\Peval\Expressions\FunctionCallExpression;
 use Manychois\Peval\Expressions\LiteralExpression;
+use Manychois\Peval\Expressions\MethodCallExpression;
 use Manychois\Peval\Expressions\PropertyAccessExpression;
 use Manychois\Peval\Expressions\StringInterpolationExpression;
 use Manychois\Peval\Expressions\UnaryExpression;
@@ -62,6 +64,17 @@ class ExpressionPrinter implements VisitorInterface
         ];
     }
 
+    public function visitFunctionCall(FunctionCallExpression $expr): mixed
+    {
+        $args = array_map(fn (ExpressionInterface $arg) => $arg->accept($this), $expr->arguments);
+
+        return [
+            'type' => 'FunctionCall',
+            'name' => $expr->name->accept($this),
+            'arguments' => $args,
+        ];
+    }
+
     public function visitLiteral(LiteralExpression $expr): mixed
     {
         return [
@@ -70,12 +83,26 @@ class ExpressionPrinter implements VisitorInterface
         ];
     }
 
+    public function visitMethodCall(MethodCallExpression $expr): mixed
+    {
+        $args = array_map(fn (ExpressionInterface $arg) => $arg->accept($this), $expr->arguments);
+
+        return [
+            'type' => 'MethodCall',
+            'target' => $expr->target->accept($this),
+            'methodName' => $expr->methodName->accept($this),
+            'arguments' => $args,
+            'isStatic' => $expr->isStatic,
+        ];
+    }
+
     public function visitPropertyAccess(PropertyAccessExpression $expr): mixed
     {
         return [
             'type' => 'PropertyAccess',
-            'target' => $expr->target?->accept($this),
-            'propertyName' => $expr->propertyName?->accept($this),
+            'target' => $expr->target->accept($this),
+            'propertyName' => $expr->propertyName->accept($this),
+            'isStatic' => $expr->isStatic,
         ];
     }
 
