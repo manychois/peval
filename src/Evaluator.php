@@ -90,6 +90,10 @@ class Evaluator implements VisitorInterface
             return $target[$offset];
         }
 
+        if (!is_string($offset)) {
+            throw new LogicException(sprintf('Invalid offset type %s for object property access', get_debug_type($offset)));
+        }
+
         if (property_exists($target, $offset)) {
             return $target->{$offset};
         }
