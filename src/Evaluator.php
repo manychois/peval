@@ -15,6 +15,7 @@ use Manychois\Peval\Expressions\LiteralExpression;
 use Manychois\Peval\Expressions\MethodCallExpression;
 use Manychois\Peval\Expressions\PropertyAccessExpression;
 use Manychois\Peval\Expressions\StringInterpolationExpression;
+use Manychois\Peval\Expressions\TernaryExpression;
 use Manychois\Peval\Expressions\UnaryExpression;
 use Manychois\Peval\Expressions\VariableExpression;
 use Manychois\Peval\Expressions\VisitorInterface;
@@ -148,6 +149,7 @@ class Evaluator implements VisitorInterface
         };
 
         return match ($opType) {
+            TokenType::COALESCE => $left ?? $right,
             TokenType::PLUS => $numeric($left, 'left') + $numeric($right, 'right'),
             TokenType::MINUS => $numeric($left, 'left') - $numeric($right, 'right'),
             TokenType::MULTIPLY => $numeric($left, 'left') * $numeric($right, 'right'),
@@ -157,11 +159,13 @@ class Evaluator implements VisitorInterface
             TokenType::EQUAL => $left == $right,
             TokenType::NOT_EQUAL => $left != $right,
             TokenType::IDENTICAL => $left === $right,
+            TokenType::INSTANCE_OF => $left instanceof $right,
             TokenType::NOT_IDENTICAL => $left !== $right,
             TokenType::LESS => $left < $right,
             TokenType::LESS_EQUAL => $left <= $right,
             TokenType::GREATER => $left > $right,
             TokenType::GREATER_EQUAL => $left >= $right,
+            TokenType::SPACESHIP => $left <=> $right,
             TokenType::SYMBOL_AND, TokenType::WORD_AND => $left && $right,
             TokenType::SYMBOL_OR, TokenType::WORD_OR => $left || $right,
             TokenType::XOR => $left xor $right,
@@ -198,6 +202,7 @@ class Evaluator implements VisitorInterface
             TokenType::BOOL => filter_var($expr->value->text, FILTER_VALIDATE_BOOLEAN),
             TokenType::NULL => null,
             TokenType::STRING => $this->evaluateLiteralString($expr->value),
+            TokenType::IDENTIFIER => $expr->value->text,
             default => throw new LogicException(sprintf('Unsupported literal type: %s', $expr->value->type->name)),
         };
     }
@@ -277,6 +282,16 @@ class Evaluator implements VisitorInterface
         }
 
         return $result;
+    }
+
+    public function visitTernary(TernaryExpression $expr): mixed
+    {
+        $condition = $this->evaluate($expr->condition);
+        if ($condition) {
+            return $this->evaluate($expr->trueExpr);
+        }
+
+        return $this->evaluate($expr->falseExpr);
     }
 
     public function visitUnary(UnaryExpression $expr): mixed

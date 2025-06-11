@@ -53,11 +53,16 @@ enum TokenType: string
     // Other
     case VARIABLE = 'VARIABLE';
     case IDENTIFIER = 'IDENTIFIER';
+    case INSTANCE_OF = 'INSTANCEOF';
     case COMMA = ',';
     case DOT = '.';
     case QUOTE = '"';
+    case QUESTION_MARK = '?';
+    case COALESCE = '??';
+    case COLON = ':';
     case DOUBLE_COLON = '::';
     case ARROW = '->';
     case DOUBLE_ARROW = '=>';
+    case SPACESHIP = '<=>';
     case WHITESPACE = ' ';
 }

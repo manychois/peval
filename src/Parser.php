@@ -14,6 +14,7 @@ use Manychois\Peval\Expressions\LiteralExpression;
 use Manychois\Peval\Expressions\MethodCallExpression;
 use Manychois\Peval\Expressions\PropertyAccessExpression;
 use Manychois\Peval\Expressions\StringInterpolationExpression;
+use Manychois\Peval\Expressions\TernaryExpression;
 use Manychois\Peval\Expressions\UnaryExpression;
 use Manychois\Peval\Expressions\VariableExpression;
 use Manychois\Peval\Tokenisation\TokenStream;
@@ -61,8 +62,37 @@ class Parser
 
     private function parseWordAnd(TokenStream $lp): ExpressionInterface
     {
-        $expr = $this->parseSymbolOr($lp);
+        $expr = $this->parseTernary($lp);
         if ($lp->matchAny(TokenType::WORD_AND)) {
+            $operator = $lp->previous();
+            $right = $this->parseTernary($lp);
+
+            return new BinaryExpression($expr, $operator, $right);
+        }
+
+        return $expr;
+    }
+
+    private function parseTernary(TokenStream $lp): ExpressionInterface
+    {
+        $condition = $this->parseCoalesce($lp);
+        if ($lp->matchAny(TokenType::QUESTION_MARK)) {
+            $trueExpr = $this->parseCoalesce($lp);
+            if (!$lp->matchAny(TokenType::COLON)) {
+                throw $lp->createParseException('Expected colon after true expression in ternary');
+            }
+            $falseExpr = $this->parseCoalesce($lp);
+
+            return new TernaryExpression($condition, $trueExpr, $falseExpr);
+        }
+
+        return $condition;
+    }
+
+    private function parseCoalesce(TokenStream $lp): ExpressionInterface
+    {
+        $expr = $this->parseSymbolOr($lp);
+        if ($lp->matchAny(TokenType::COALESCE)) {
             $operator = $lp->previous();
             $right = $this->parseSymbolOr($lp);
 
@@ -113,7 +143,7 @@ class Parser
     private function parseComparison(TokenStream $lp): ExpressionInterface
     {
         $expr = $this->parseConcatenation($lp);
-        while ($lp->matchAny(TokenType::LESS, TokenType::LESS_EQUAL, TokenType::GREATER, TokenType::GREATER_EQUAL)) {
+        while ($lp->matchAny(TokenType::LESS, TokenType::LESS_EQUAL, TokenType::GREATER, TokenType::GREATER_EQUAL, TokenType::SPACESHIP)) {
             $operator = $lp->previous();
             $right = $this->parseConcatenation($lp);
             $expr = new BinaryExpression($expr, $operator, $right);
@@ -148,11 +178,24 @@ class Parser
 
     private function parseMultiplication(TokenStream $lp): ExpressionInterface
     {
-        $expr = $this->parseExponentiation($lp);
+        $expr = $this->parseInstanceOf($lp);
         while ($lp->matchAny(TokenType::MULTIPLY, TokenType::DIVIDE, TokenType::MODULO)) {
             $operator = $lp->previous();
-            $right = $this->parseExponentiation($lp);
+            $right = $this->parseInstanceOf($lp);
             $expr = new BinaryExpression($expr, $operator, $right);
+        }
+
+        return $expr;
+    }
+
+    private function parseInstanceOf(TokenStream $lp): ExpressionInterface
+    {
+        $expr = $this->parseExponentiation($lp);
+        if ($lp->matchAny(TokenType::INSTANCE_OF)) {
+            $operator = $lp->previous();
+            $right = $this->parsePrimary($lp); // Expecting a class name or identifier
+
+            return new BinaryExpression($expr, $operator, $right);
         }
 
         return $expr;
@@ -354,6 +397,7 @@ class Parser
 
                 return new PropertyAccessExpression($identifier, $prop, true);
             }
+
             if ($lp->matchAny(TokenType::LEFT_PARENTHESIS)) {
                 $arguments = [];
                 while (!$lp->matchAny(TokenType::RIGHT_PARENTHESIS)) {
@@ -369,6 +413,8 @@ class Parser
 
                 return new FunctionCallExpression($identifier, $arguments);
             }
+
+            return $identifier;
         }
 
         throw $lp->createParseException();

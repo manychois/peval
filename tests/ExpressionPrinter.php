@@ -13,6 +13,7 @@ use Manychois\Peval\Expressions\LiteralExpression;
 use Manychois\Peval\Expressions\MethodCallExpression;
 use Manychois\Peval\Expressions\PropertyAccessExpression;
 use Manychois\Peval\Expressions\StringInterpolationExpression;
+use Manychois\Peval\Expressions\TernaryExpression;
 use Manychois\Peval\Expressions\UnaryExpression;
 use Manychois\Peval\Expressions\VariableExpression;
 use Manychois\Peval\Expressions\VisitorInterface;
@@ -130,6 +131,16 @@ class ExpressionPrinter implements VisitorInterface
         return [
             'type' => 'Variable',
             'name' => $this->printToken($expr->name),
+        ];
+    }
+
+    public function visitTernary(TernaryExpression $expr): mixed
+    {
+        return [
+            'type' => 'Ternary',
+            'condition' => $expr->condition->accept($this),
+            'trueExpr' => $expr->trueExpr->accept($this),
+            'falseExpr' => $expr->falseExpr->accept($this),
         ];
     }
 

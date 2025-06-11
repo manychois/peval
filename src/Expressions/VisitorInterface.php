@@ -22,6 +22,8 @@ interface VisitorInterface
 
     public function visitStringInterpolation(StringInterpolationExpression $expr): mixed;
 
+    public function visitTernary(TernaryExpression $expr): mixed;
+
     public function visitUnary(UnaryExpression $expr): mixed;
 
     public function visitVariable(VariableExpression $expr): mixed;
