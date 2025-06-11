@@ -252,7 +252,12 @@ class Evaluator implements VisitorInterface
         $property = '';
         if ($expr->propertyName instanceof LiteralExpression) {
             $property = $expr->propertyName->value->text;
-        } // TODO: else
+        } else {
+            $property = $this->evaluate($expr->propertyName);
+            if (!is_string($property)) {
+                throw new LogicException(sprintf('Property name must be a string, found %s', get_debug_type($property)));
+            }
+        }
 
         return $expr->isStatic ? $target::{$property} : $target->{$property};
     }
