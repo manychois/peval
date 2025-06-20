@@ -1,7 +1,6 @@
 /coverage/
+/dev
 /vendor/
 /.php-cs-fixer.cache
 /.phpunit.result.cache
 /composer.phar
-/dev-notes.md
-/playground*.php
