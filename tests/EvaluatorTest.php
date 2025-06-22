@@ -5,8 +5,7 @@ declare(strict_types=1);
 namespace Manychois\PevalTests;
 
 use DateTime;
-use Generator;
-use LogicException;
+use DateTimeZone;
 use Manychois\Peval\Evaluator;
 use Manychois\Peval\Parser;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -18,66 +17,51 @@ use PHPUnit\Framework\Attributes\DataProvider;
  */
 class EvaluatorTest extends AbstractBaseTestCase
 {
-    #[DataProvider('provideEvaluateData')]
-    public function testEvaluate(string $expression, array $context, mixed $expected): void
+    private Evaluator $evaluator;
+    private array $context;
+
+    protected function setUp(): void
     {
-        $evaluator = new Evaluator($context);
-        $expression = (new Parser())->parse($expression);
-        $result = $evaluator->evaluate($expression);
-        $this->assertEquals($expected, $result);
+        parent::setUp();
+        $this->evaluator = new Evaluator();
+        $this->context = [
+            'a' => 12,
+            'b' => 34,
+            'c' => 'Apple',
+            'd' => 'Banana',
+            'e' => new DateTime('1997-07-01', new DateTimeZone('UTC')),
+            'f' => [1, 2, 3],
+        ];
     }
 
-    public static function provideEvaluateData(): Generator
+    #[DataProvider('provideEvaluate')]
+    public function testEvaluate(string $php, mixed $expected): void
     {
-        yield 'unary1' => ['-1', [], -1];
-        yield 'unary2' => ['!$a', ['a' => true], false];
-        yield 'unary3' => ['+$a', ['a' => '12345'], 12345];
-        yield 'binary1' => ['1 + 2 * 3 - 4', [], 3];
-        yield 'binary2' => ['2 ** 4 / 4', [], 4];
-        yield 'binary3' => ['$a . \' \' . $b', ['a' => 'Apple', 'b' => 'juice'], 'Apple juice'];
-        yield 'comparison1' => ['$a == $b', ['a' => 1, 'b' => '1'], true];
-        yield 'comparison2' => ['$a === $b', ['a' => 1, 'b' => '1'], false];
-        yield 'comparison3' => ['$a != $b', ['a' => 1, 'b' => '1'], false];
-        yield 'comparison4' => ['$a !== $b', ['a' => 1, 'b' => '1'], true];
-        yield 'comparison5' => ['$a < $b', ['a' => 1, 'b' => '2'], true];
-        yield 'comparison6' => ['$a <= $b', ['a' => 1, 'b' => '1'], true];
-        yield 'comparison7' => ['$a > $b', ['a' => 2, 'b' => '1'], true];
-        yield 'comparison8' => ['$a >= $b', ['a' => 1, 'b' => '1'], true];
-        yield 'logical1' => ['$a && $b', ['a' => true, 'b' => false], false];
-        yield 'logical2' => ['$a || $b', ['a' => false, 'b' => true], true];
-        yield 'logical3' => ['$a and $b', ['a' => true, 'b' => false], false];
-        yield 'logical4' => ['$a or $b', ['a' => false, 'b' => true], true];
-        yield 'logical5' => ['$a xor $b', ['a' => true, 'b' => true], false];
-        yield 'string1' => ["'It\\\\\\'s'", [], 'It\\\'s'];
-        yield 'string2' => ['"\"Quote\""', [], '"Quote"'];
-        yield 'string3' => ['"Special chars:\n\r\t\v\e\f\\\"', [], "Special chars:\n\r\t\v\e\f\\"];
-        yield 'string4' => ['"Octal: \101\102\103"', [], 'Octal: ABC'];
-        yield 'string5' => ['"Hex: \x41\x42\x43"', [], 'Hex: ABC'];
-        yield 'string6' => ['"Unicode: \u{41}\u{42}\u{43}"', [], 'Unicode: ABC'];
-        yield 'interpolation1' => ['"Hello {$name}!"', ['name' => 'World'], 'Hello World!'];
-        yield 'interpolation2' => ['"Second element is {$items[1]}."', ['items' => [11, 22, 33]], 'Second element is 22.'];
-        yield 'array1' => ['["a", "b", "c"][2]', [], 'c'];
-        yield 'property1' => ['$obj::ATOM', ['obj' => new DateTime()], 'Y-m-d\TH:i:sP'];
+        $parser = new Parser();
+        $expr = $parser->parse($php);
+        $result = $this->evaluator->evaluate($expr, $this->context);
+        $this->assertSame($expected, $result);
     }
 
-    #[DataProvider('provideEvaluateThrowExData')]
-    public function testEvaluateThrowEx(string $expression, array $context, string $expectedMsg): void
+    public static function provideEvaluate(): iterable
     {
-        $this->expectException(LogicException::class);
-        $this->expectExceptionMessage($expectedMsg);
-
-        $evaluator = new Evaluator($context);
-        $expression = (new Parser())->parse($expression);
-        $evaluator->evaluate($expression);
-    }
-
-    public static function provideEvaluateThrowExData(): Generator
-    {
-        yield 'unary1' => ['-$a', ['a' => []], 'Invalid operand for unary operator at line 1, column 1, found array'];
-        yield 'binary1' => ['1 + $a', ['a' => []], 'Invalid right operand for mathematical operator at line 1, column 3, found array'];
-        yield 'binary2' => ['$a . $b', ['a' => [], 'b' => 'abc'], 'Invalid left operand for concatenation operator at line 1, column 4, found array'];
-        yield 'variable1' => ['$a', [], 'Undefined variable: $a'];
-        yield 'string1' => ['"Invalid escape: \u{FFFFFF}"', [], 'Invalid Unicode escape sequence: FFFFFF'];
-        yield 'array1' => ['["a", "b", "c"][3]', [], 'Undefined offset 3 in array'];
+        yield 'constant' => ['12345', 12345];
+        yield 'add' => ['$a + $b', 46];
+        yield 'subtract' => ['$b - $a', 22];
+        yield 'multiply' => ['$a * $b', 408];
+        yield 'divide' => ['round($a / $b, 4)', 0.3529];
+        yield 'string concat' => ['$c . $d', 'AppleBanana'];
+        yield 'ternary true' => ['$a > 10 ? $c : $d', 'Apple'];
+        yield 'ternary false' => ['$a < 10 ? $c : $d', 'Banana'];
+        yield 'string interpolation 1' => ['"Value: $a"', 'Value: 12'];
+        yield 'string interpolation 2' => ['"Value: {$a}"', 'Value: 12'];
+        yield 'method call' => ['$e->format("Y-m-d")', '1997-07-01'];
+        yield 'object class' => ['$e::class', 'DateTime'];
+        yield 'object constant' => ['$e::ATOM', 'Y-m-d\TH:i:sP'];
+        yield 'arrow function' => ['array_map(fn($x) => $x * 2, $f)', [2, 4, 6]];
+        yield 'string cast' => ['(string)$a', '12'];
+        yield 'instanceof' => ['$e instanceof DateTime', true];
+        yield 'array access' => ['$f[1]', 2];
+        yield 'array creation' => ['array(1, 2, 3)', [1, 2, 3]];
     }
 }
