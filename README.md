@@ -63,15 +63,15 @@ echo $evaluator->evaluate($expression, $context); // print "Hello World!"
 
 ### symfony/expression-language
 
-The `symfony/expression-language` library provides rich expression evaluation capabilities but it has a  different syntax than PHP. `manychois/Peval` understands native PHP syntax, making it easier for PHP developers to use without learning a new syntax.
+The `symfony/expression-language` library provides rich expression evaluation capabilities but it has a different syntax than PHP. Peval understands native PHP syntax, making it easier for PHP developers to use without learning a new syntax.
 
 ### nikic/php-parser
 
-The `nikic/php-parser` library is primarily a parser for PHP code. Its built-in evaluator `ConstExprEvaluator` can only handle constant expressions. `manychois/Peval` builds on top of it to provide a complete solution for evaluating expressions.
+The `nikic/php-parser` library is primarily a parser for PHP code. Its built-in evaluator `ConstExprEvaluator` can only handle constant expressions. Peval builds on top of it to provide a complete solution for evaluating expressions.
 
 ### madorin/matex
 
-The `madorin/matex` library focuses mainly on mathematical expressions and does not support complex data structures like arrays or objects. It is limited to numeric operations, while `manychois/Peval` supports a wide range of PHP features including strings, arrays, and objects.
+The `madorin/matex` library focuses mainly on mathematical expressions and does not support complex data structures like arrays or objects. It is limited to numeric operations, while Peval supports a wide range of PHP features including strings, arrays, and objects.
 
 ## License
 
