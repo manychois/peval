@@ -4,398 +4,337 @@ declare(strict_types=1);
 
 namespace Manychois\Peval;
 
-use IntlChar;
-use LogicException;
-use Manychois\Peval\Expressions\ArrayAccessExpression;
-use Manychois\Peval\Expressions\ArrayExpression;
-use Manychois\Peval\Expressions\BinaryExpression;
-use Manychois\Peval\Expressions\ExpressionInterface;
-use Manychois\Peval\Expressions\FunctionCallExpression;
-use Manychois\Peval\Expressions\LiteralExpression;
-use Manychois\Peval\Expressions\MethodCallExpression;
-use Manychois\Peval\Expressions\PropertyAccessExpression;
-use Manychois\Peval\Expressions\StringInterpolationExpression;
-use Manychois\Peval\Expressions\TernaryExpression;
-use Manychois\Peval\Expressions\UnaryExpression;
-use Manychois\Peval\Expressions\VariableExpression;
-use Manychois\Peval\Expressions\VisitorInterface;
-use Manychois\Peval\Tokenisation\Token;
-use Manychois\Peval\Tokenisation\TokenType;
+use Closure;
+use PhpParser\ConstExprEvaluator;
+use PhpParser\Node;
+use PhpParser\Node\Expr;
+use PhpParser\Node\Scalar;
+use PhpParser\PrettyPrinter\Standard as Printer;
+use Stringable;
+use Throwable;
+use WeakReference;
 
-class Evaluator implements VisitorInterface
+/**
+ * Evaluator class for evaluating PHP expressions in a given context.
+ */
+class Evaluator
 {
+    /**
+     * @var WeakReference<Printer>|null
+     */
+    private static ?WeakReference $printerRef = null;
+    /**
+     * @var array<string>
+     */
+    private static array $unsafeFunctions = [];
+    private readonly ConstExprEvaluator $inner;
     /**
      * @var array<string,mixed>
      */
-    private array $context;
+    private array $context = [];
 
     /**
-     * Creates a new Evaluator instance.
-     *
-     * @param array<string,mixed> $context The context in which to evaluate expressions.
-     *                                     This can include variables and their values that the evaluator can access.
+     * Constructor initializes the evaluator.
      */
-    public function __construct(array $context = [])
+    public function __construct()
     {
-        $this->context = $context;
+        $closure = Closure::fromCallable([$this, 'fallbackEvaluate']);
+        $this->inner = new ConstExprEvaluator($closure);
     }
 
-    public function evaluate(ExpressionInterface $expression): mixed
+    /**
+     * Set the unsafe functions that should not be allowed during evaluation.
+     *
+     * @param array<string> $list List of unsafe function names
+     */
+    public static function setUnsafeFunctions(array $list): void
     {
-        return $expression->accept($this);
+        self::$unsafeFunctions = $list;
     }
 
-    // region implements VisitorInterface
-
-    public function visitArray(ArrayExpression $expr): mixed
+    protected static function getPrinter(): Printer
     {
-        $result = [];
-        foreach ($expr->elements as $element) {
-            $key = null;
-            if ($element->key) {
-                $key = $this->evaluate($element->key);
-                if (!is_int($key) && !is_string($key)) {
-                    throw new LogicException(sprintf('Invalid key type %s for array element', get_debug_type($key)));
-                }
-            }
-            if (null === $key) {
-                // if no key is provided, use the next integer index
-                $key = count($result);
-            }
-            $value = $this->evaluate($element->value);
-            $result[$key] = $value;
+        $printer = self::$printerRef?->get();
+        if (!($printer instanceof Printer)) {
+            $printer = new Printer();
+            self::$printerRef = WeakReference::create($printer);
         }
 
-        return $result;
+        return $printer;
     }
 
-    public function visitArrayAccess(ArrayAccessExpression $expr): mixed
+    protected static function getUnsafeFunctions(): array
     {
-        $target = $this->evaluate($expr->target);
-        $offset = $this->evaluate($expr->offset);
-
-        if (!is_array($target) && !is_object($target)) {
-            throw new LogicException('Cannot access offset on non-array/non-object');
+        if (count(self::$unsafeFunctions) === 0) {
+            self::$unsafeFunctions = include __DIR__ . '/unsafe.php';
         }
 
-        if (is_array($target)) {
-            if (!is_string($offset) && !is_int($offset)) {
-                throw new LogicException(sprintf('Invalid offset type %s for array access', get_debug_type($offset)));
-            }
-
-            if (!array_key_exists($offset, $target)) {
-                throw new LogicException(sprintf('Undefined offset %s in array', var_export($offset, true)));
-            }
-
-            return $target[$offset];
-        }
-
-        if (!is_string($offset)) {
-            throw new LogicException(sprintf('Invalid offset type %s for object property access', get_debug_type($offset)));
-        }
-
-        if (property_exists($target, $offset)) {
-            return $target->{$offset};
-        }
-
-        throw new LogicException(sprintf('Undefined property %s on object of type %s', var_export($offset, true), get_debug_type($target)));
+        return self::$unsafeFunctions;
     }
 
-    public function visitBinary(BinaryExpression $expr): mixed
+    /**
+     * Evaluate a given expression in the context of provided variables.
+     *
+     * @param Expr                $expr    the expression to evaluate
+     * @param array<string,mixed> $context the context for variable evaluation, where keys are variable names and values are their corresponding values
+     *
+     * @return mixed the result of the evaluation
+     */
+    public function evaluate(Expr $expr, array $context): mixed
     {
-        $left = $this->evaluate($expr->left);
-        $opType = $expr->operator->type;
+        try {
+            $this->context = $context;
 
-        // Short-circuit evaluation for logical operators
-        if (TokenType::SYMBOL_AND === $opType || TokenType::WORD_AND === $opType) {
-            if (!$left) {
-                return false;
-            }
-        } elseif (TokenType::SYMBOL_OR === $opType || TokenType::WORD_OR === $opType) {
-            if ($left) {
-                return true;
-            }
+            return $this->inner->evaluateSilently($expr);
+        } catch (Throwable $ex) {
+            throw new EvaluationException($ex->getMessage(), $ex->getCode(), $ex);
+        } finally {
+            $this->context = []; // Clear context after evaluation
         }
+    }
 
-        $right = $this->evaluate($expr->right);
-
-        $numeric = function (mixed $value, string $leftOrRight) use ($expr): int|float|string {
-            if (is_numeric($value)) {
-                return $value;
-            }
-            $message = sprintf(
-                'Invalid %s operand for mathematical operator at line %d, column %d, found %s',
-                $leftOrRight,
-                $expr->operator->line,
-                $expr->operator->column,
-                \get_debug_type($value)
-            );
-
-            throw new LogicException($message);
-        };
-
-        $str = function (mixed $value, string $leftOrRight) use ($expr): string {
-            if (is_string($value)) {
-                return $value;
-            }
-            if (null === $value || is_scalar($value) || is_object($value) && method_exists($value, '__toString')) {
-                return (string) $value;
-            }
-            $message = sprintf(
-                'Invalid %s operand for concatenation operator at line %d, column %d, found %s',
-                $leftOrRight,
-                $expr->operator->line,
-                $expr->operator->column,
-                \get_debug_type($value)
-            );
-
-            throw new LogicException($message);
-        };
-
-        return match ($opType) {
-            TokenType::COALESCE => $left ?? $right,
-            TokenType::PLUS => $numeric($left, 'left') + $numeric($right, 'right'),
-            TokenType::MINUS => $numeric($left, 'left') - $numeric($right, 'right'),
-            TokenType::MULTIPLY => $numeric($left, 'left') * $numeric($right, 'right'),
-            TokenType::DIVIDE => $numeric($left, 'left') / $numeric($right, 'right'),
-            TokenType::MODULO => $numeric($left, 'left') % $numeric($right, 'right'),
-            TokenType::POWER => $numeric($left, 'left') ** $numeric($right, 'right'),
-            TokenType::EQUAL => $left == $right,
-            TokenType::NOT_EQUAL => $left != $right,
-            TokenType::IDENTICAL => $left === $right,
-            TokenType::INSTANCE_OF => $left instanceof $right,
-            TokenType::NOT_IDENTICAL => $left !== $right,
-            TokenType::LESS => $left < $right,
-            TokenType::LESS_EQUAL => $left <= $right,
-            TokenType::GREATER => $left > $right,
-            TokenType::GREATER_EQUAL => $left >= $right,
-            TokenType::SPACESHIP => $left <=> $right,
-            TokenType::SYMBOL_AND, TokenType::WORD_AND => $left && $right,
-            TokenType::SYMBOL_OR, TokenType::WORD_OR => $left || $right,
-            TokenType::XOR => $left xor $right,
-            TokenType::DOT => $str($left, 'left') . $str($right, 'right'),
-            default => throw new LogicException(sprintf('Unsupported binary operator: %s', $expr->operator->text)),
+    protected function fallbackEvaluate(Expr $expr): mixed
+    {
+        return match ($expr::class) {
+            Expr\ArrowFunction::class => $this->evalArrowFunction($expr),
+            Expr\Assign::class => $this->throwAssignError($expr),
+            Expr\Cast\Array_::class,
+            Expr\Cast\Bool_::class,
+            Expr\Cast\Double::class,
+            Expr\Cast\Int_::class,
+            Expr\Cast\Object_::class,
+            Expr\Cast\String_::class => $this->evalCast($expr, $expr::class),
+            Expr\ClassConstFetch::class => $this->evalClassConstFetch($expr),
+            Expr\FuncCall::class => $this->evalFuncCall($expr),
+            Expr\Instanceof_::class => $this->evalInstanceOf($expr),
+            Expr\MethodCall::class => $this->evalMethodCall($expr),
+            Expr\Variable::class => $this->evalVariable($expr),
+            Scalar\InterpolatedString::class => $this->evalInterpolatedString($expr),
+            default => throw new EvaluationException(sprintf('Expression %s of type %s cannot be evaluated', self::getPrinter()->prettyPrintExpr($expr), $expr::class)),
         };
     }
 
-    public function visitFunctionCall(FunctionCallExpression $expr): mixed
+    /**
+     * @param array<Node\Arg|Node\VariadicPlaceholder> $args
+     *
+     * @return array<int,mixed>
+     */
+    protected function evalArgs(array $args): array
     {
-        if ($expr->name instanceof LiteralExpression) {
-            $funcName = $expr->name->value->text;
-        } else {
-            $funcName = $this->evaluate($expr->name);
-        }
-        if (!is_string($funcName)) {
-            throw new LogicException(sprintf('Function name must be a string, found %s', get_debug_type($funcName)));
-        }
-
-        $args = [];
-        foreach ($expr->arguments as $arg) {
-            $args[] = $this->evaluate($arg);
-        }
-        if (!is_callable($funcName, true)) {
-            throw new LogicException(sprintf('Function "%s" is not callable.', $funcName));
-        }
-
-        return call_user_func_array($funcName, $args);
-    }
-
-    public function visitLiteral(LiteralExpression $expr): mixed
-    {
-        return match ($expr->value->type) {
-            TokenType::INTEGER => intval($expr->value->text),
-            TokenType::FLOAT => floatval($expr->value->text),
-            TokenType::BOOL => filter_var($expr->value->text, FILTER_VALIDATE_BOOLEAN),
-            TokenType::NULL => null,
-            TokenType::STRING => $this->evaluateLiteralString($expr->value),
-            TokenType::IDENTIFIER => $expr->value->text,
-            default => throw new LogicException(sprintf('Unsupported literal type: %s', $expr->value->type->name)),
-        };
-    }
-
-    public function visitMethodCall(MethodCallExpression $expr): mixed
-    {
-        if ($expr->target instanceof LiteralExpression) {
-            $target = $expr->target->value->text;
-        } else {
-            $target = $this->evaluate($expr->target);
-        }
-
-        if (!is_object($target)) {
-            throw new LogicException(sprintf('Cannot call method on non-object of type %s', get_debug_type($target)));
-        }
-
-        if ($expr->methodName instanceof LiteralExpression) {
-            $methodName = $expr->methodName->value->text;
-        } else {
-            $methodName = $this->evaluate($expr->methodName);
-        }
-
-        if (!is_string($methodName)) {
-            throw new LogicException(sprintf('Method name must be a string, found %s', get_debug_type($methodName)));
-        }
-        $args = [];
-        foreach ($expr->arguments as $arg) {
-            $args[] = $this->evaluate($arg);
-        }
-
-        $callable = [$target, $methodName];
-        if (!is_callable($callable, true)) {
-            throw new LogicException(sprintf('Method %s%s%s is not callable', get_debug_type($target), $expr->isStatic ? '::' : '->', $methodName));
-        }
-
-        return call_user_func_array($callable, $args);
-    }
-
-    public function visitPropertyAccess(PropertyAccessExpression $expr): mixed
-    {
-        if ($expr->target instanceof LiteralExpression) {
-            $target = $expr->target->value->text;
-        } else {
-            $target = $this->evaluate($expr->target);
-        }
-
-        $property = '';
-        if ($expr->propertyName instanceof LiteralExpression) {
-            $property = $expr->propertyName->value->text;
-        } else {
-            $property = $this->evaluate($expr->propertyName);
-            if (!is_string($property)) {
-                throw new LogicException(sprintf('Property name must be a string, found %s', get_debug_type($property)));
-            }
-        }
-
-        return $expr->isStatic ? $target::{$property} : $target->{$property};
-    }
-
-    public function visitStringInterpolation(StringInterpolationExpression $expr): mixed
-    {
-        $result = '';
-        foreach ($expr->innerExpressions() as $inner) {
-            if ($inner instanceof LiteralExpression) {
-                if (TokenType::STRING === $inner->value->type) {
-                    $value = $this->evaluateDoubleQuoteString($inner->value->text);
-                } else {
-                    $value = $this->evaluate($inner);
+        $values = [];
+        foreach ($args as $arg) {
+            if ($arg instanceof Node\Arg) {
+                if ($arg->byRef) {
+                    throw new EvaluationException(sprintf('Arguments passed by reference %s is not supported', self::getPrinter()->prettyPrintExpr($arg->value)));
                 }
             } else {
-                $value = $this->evaluate($inner);
+                throw new EvaluationException('VariadicPlaceholder is not supported');
             }
-
-            if (!is_string($value)) {
-                if (null === $value || is_scalar($value) || is_object($value) && method_exists($value, '__toString')) {
-                    $value = (string) $value;
-                } else {
-                    throw new LogicException(sprintf('Invalid value in interpolation string, found %s', get_debug_type($value)));
-                }
-            }
-            $result .= $value;
+            $values[] = $this->inner->evaluateSilently($arg->value);
         }
 
-        return $result;
+        return $values;
     }
 
-    public function visitTernary(TernaryExpression $expr): mixed
+    protected function evalArrowFunction(Expr $expr): Closure
     {
-        $condition = $this->evaluate($expr->condition);
-        if ($condition) {
-            return $this->evaluate($expr->trueExpr);
+        assert($expr instanceof Expr\ArrowFunction, 'Expected ArrowFunction expression');
+        $evaluator = new self();
+        $paramNames = [];
+        foreach ($expr->params as $param) {
+            assert($param->var instanceof Expr\Variable, 'Expected Variable in ArrowFunction parameter');
+            $paramName = $param->var->name;
+            assert(is_string($paramName));
+            $paramNames[] = $paramName;
         }
 
-        return $this->evaluate($expr->falseExpr);
-    }
-
-    public function visitUnary(UnaryExpression $expr): mixed
-    {
-        $value = $this->evaluate($expr->operand);
-
-        $numeric = function (mixed $value) use ($expr): int|float|string {
-            if (is_numeric($value)) {
-                return $value;
+        return function (...$args) use ($evaluator, $expr, $paramNames) {
+            $context = $this->context;
+            foreach ($args as $i => $arg) {
+                $context[$paramNames[$i]] = $arg;
             }
-            $message = sprintf(
-                'Invalid operand for unary operator at line %d, column %d, found %s',
-                $expr->operator->line,
-                $expr->operator->column,
-                get_debug_type($value)
-            );
 
-            throw new LogicException($message);
-        };
-
-        return match ($expr->operator->type) {
-            TokenType::MINUS => -$numeric($value),
-            TokenType::NOT => !$value,
-            TokenType::PLUS => +$numeric($value),
-            default => throw new LogicException(sprintf('Unsupported unary operator: %s', $expr->operator->text)),
+            return $evaluator->evaluate($expr->expr, $context);
         };
     }
 
-    public function visitVariable(VariableExpression $expr): mixed
+    protected function evalCast(Expr $expr, string $castType): mixed
     {
-        $name = substr($expr->name->text, 1); // Remove the leading '$'
-        if (!array_key_exists($name, $this->context)) {
-            throw new LogicException(sprintf('Undefined variable: %s', $expr->name->text));
-        }
+        assert($expr instanceof Expr\Cast, 'Expected Cast expression');
+        $value = $this->inner->evaluateSilently($expr->expr);
 
-        return $this->context[$name];
-    }
+        $expectsScalar = match ($castType) {
+            Expr\Cast\Bool_::class,
+            Expr\Cast\Double::class,
+            Expr\Cast\Int_::class,
+            Expr\Cast\String_::class => true,
+            default => false,
+        };
+        if ($expectsScalar) {
+            if (!is_scalar($value)) {
+                throw new EvaluationException(sprintf('Cannot cast %s to %s', get_debug_type($value), $castType));
+            }
 
-    // endregion implements VisitorInterface
-
-    private function evaluateLiteralString(Token $token): string
-    {
-        assert(TokenType::STRING === $token->type);
-        $quote = $token->text[0];
-        $text = substr($token->text, 1, strlen($token->text) - 2);
-        if ('\'' === $quote) {
-            $text = str_replace(['\\\\', '\\\''], ['\\', '\''], $text);
-        } elseif ('"' === $quote) {
-            $text = $this->evaluateDoubleQuoteString($text);
-        }
-
-        return $text;
-    }
-
-    private function evaluateDoubleQuoteString(string $content): string
-    {
-        $pattern = '/\\\([nrtvef\\\$"]|[0-7]{1,3}|x[0-9A-Fa-f]{1,2}|u\{([0-9A-Fa-f]+)\})/';
-        $callback = function (array $matches): string {
-            assert(isset($matches[1]) && is_string($matches[1]));
-            $ch0 = $matches[1][0];
-            $value = match ($ch0) {
-                'n' => "\n",
-                'r' => "\r",
-                't' => "\t",
-                'v' => "\v",
-                'e' => "\e",
-                'f' => "\f",
-                '\\', '$', '"' => $ch0,
-                default => '',
+            return match ($castType) {
+                Expr\Cast\Bool_::class => (bool) $value,
+                Expr\Cast\Double::class => (float) $value,
+                Expr\Cast\Int_::class => (int) $value,
+                Expr\Cast\String_::class => (string) $value,
+                default => throw new EvaluationException(sprintf('Unsupported cast type: %s', $castType)),
             };
-            if ('' !== $value) {
-                return $value;
-            }
+        }
 
-            if ('x' === $ch0) {
-                $value = chr((int) hexdec(substr($matches[1], 1)));
-            } elseif ('u' === $ch0) {
-                assert(isset($matches[2]) && is_string($matches[2]));
-                $value = IntlChar::chr((int) hexdec($matches[2]));
-                // @phpstan-ignore identical.alwaysFalse
-                if (null === $value) {
-                    throw new LogicException(sprintf('Invalid Unicode escape sequence: %s', $matches[2]));
-                }
-            } else {
-                $value = chr((int) octdec($matches[1]));
-            }
-
-            return $value;
+        return match ($castType) {
+            Expr\Cast\Array_::class => (array) $value,
+            Expr\Cast\Object_::class => (object) $value,
+            default => throw new EvaluationException(sprintf('Unsupported cast type: %s', $castType)),
         };
+    }
 
-        $result = preg_replace_callback($pattern, $callback, $content);
-        assert(is_string($result));
+    protected function evalClassConstFetch(Expr $expr): mixed
+    {
+        assert($expr instanceof Expr\ClassConstFetch, 'Expected ClassConstFetch expression');
+        if ($expr->class instanceof Node\Name) {
+            $className = $expr->class->name;
+        } else {
+            $evaluated = $this->inner->evaluateSilently($expr->class);
+            if (!is_object($evaluated)) {
+                throw new EvaluationException(sprintf('Class name %s must be a string or an object, got %s', self::getPrinter()->prettyPrintExpr($expr->class), get_debug_type($evaluated)));
+            }
+            $className = $evaluated::class;
+        }
+        $constName = $expr->name;
+        if ($constName instanceof Node\Identifier) {
+            $constName = $constName->name;
+        } elseif ($constName instanceof Expr) {
+            $evaluated = $this->inner->evaluateSilently($constName);
+            if (!is_string($evaluated)) {
+                throw new EvaluationException(sprintf('Constant name %s must be a string, got %s', self::getPrinter()->prettyPrintExpr($constName), get_debug_type($evaluated)));
+            }
+            $constName = $evaluated;
+        } else {
+            throw new EvaluationException(sprintf('Unexpected constant name type: %s', get_debug_type($constName)));
+        }
+
+        if ('class' === $constName) {
+            return $className;
+        }
+
+        if (!class_exists($className) || !defined("{$className}::{$constName}")) {
+            throw new EvaluationException(sprintf('Constant %s does not exist in class %s', $constName, $className));
+        }
+
+        return constant("{$className}::{$constName}");
+    }
+
+    protected function evalFuncCall(Expr $expr): mixed
+    {
+        assert($expr instanceof Expr\FuncCall, 'Expected FuncCall expression');
+        if ($expr->name instanceof Node\Name) {
+            $funcName = $expr->name->name;
+        } else {
+            $funcName = $this->inner->evaluateSilently($expr->name);
+            if (!is_string($funcName)) {
+                throw new EvaluationException(sprintf('Function name %s must be a string, got %s', self::getPrinter()->prettyPrintExpr($expr->name), get_debug_type($funcName)));
+            }
+        }
+
+        if (in_array($funcName, self::getUnsafeFunctions(), true)) {
+            throw new EvaluationException(sprintf('Function %s is not allowed', $funcName));
+        }
+
+        if (!function_exists($funcName)) {
+            throw new EvaluationException(sprintf('Function %s does not exist', $funcName));
+        }
+
+        $argValues = $this->evalArgs($expr->args);
+
+        return call_user_func_array($funcName, $argValues);
+    }
+
+    protected function evalInstanceOf(Expr $expr): bool
+    {
+        assert($expr instanceof Expr\Instanceof_, 'Expected Instanceof_ expression');
+        $object = $this->inner->evaluateSilently($expr->expr);
+        if (!is_object($object)) {
+            return false;
+        }
+
+        assert($expr->class instanceof Node\Name, 'Expected class to be a Name in Instanceof_ expression');
+        $className = $expr->class->name;
+
+        return $object instanceof $className;
+    }
+
+    protected function evalInterpolatedString(Expr $expr): mixed
+    {
+        assert($expr instanceof Scalar\InterpolatedString, 'Expected InterpolatedString expression');
+        $result = '';
+        foreach ($expr->parts as $part) {
+            if ($part instanceof Node\InterpolatedStringPart) {
+                $result .= $part->value;
+            } else {
+                $value = $this->inner->evaluateSilently($part);
+                if (is_scalar($value)) {
+                    $result .= strval($value);
+                } elseif ($value instanceof Stringable) {
+                    $result .= $value->__toString();
+                } else {
+                    throw new EvaluationException(sprintf('Cannot convert %s to string', self::getPrinter()->prettyPrintExpr($part)));
+                }
+            }
+        }
 
         return $result;
+    }
+
+    protected function evalMethodCall(Expr $expr): mixed
+    {
+        assert($expr instanceof Expr\MethodCall, 'Expected MethodCall expression');
+        $object = $this->inner->evaluateSilently($expr->var);
+        if (!is_object($object)) {
+            throw new EvaluationException(sprintf('Method call on non-object: %s', self::getPrinter()->prettyPrintExpr($expr->var)));
+        }
+
+        if ($expr->name instanceof Node\Identifier) {
+            $methodName = $expr->name->name;
+        } else {
+            $methodName = $this->inner->evaluateSilently($expr->name);
+            if (!is_string($methodName)) {
+                throw new EvaluationException(sprintf('Method name must be a string, got %s', get_debug_type($methodName)));
+            }
+        }
+
+        if (!method_exists($object, $methodName)) {
+            throw new EvaluationException(sprintf('Method %s does not exist on object of type %s', $methodName, get_debug_type($object)));
+        }
+
+        $argValues = $this->evalArgs($expr->args);
+        $callable = [$object, $methodName];
+        assert(is_callable($callable), 'Method call is not callable');
+
+        return call_user_func_array($callable, $argValues);
+    }
+
+    protected function evalVariable(Expr $expr): mixed
+    {
+        assert($expr instanceof Expr\Variable, 'Expected Variable expression');
+        if (is_string($expr->name)) {
+            $varName = $expr->name;
+        } else {
+            $varName = $this->inner->evaluateSilently($expr->name);
+        }
+
+        if (!isset($this->context[$varName])) {
+            throw new EvaluationException(sprintf('Variable is not defined in the context: %s', self::getPrinter()->prettyPrintExpr($expr)));
+        }
+
+        return $this->context[$varName];
+    }
+
+    protected function throwAssignError(Expr $expr): never
+    {
+        assert($expr instanceof Expr\Assign, 'Expected Assign expression');
+        throw new EvaluationException(sprintf('Assignment expressions are not supported: %s', self::getPrinter()->prettyPrintExpr($expr)));
     }
 }
