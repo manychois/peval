@@ -1,6 +1,6 @@
 <?php
 
-use function PHPSTORM_META\map;
+declare(strict_types=1);
 
 return [
     // Code Execution Functions

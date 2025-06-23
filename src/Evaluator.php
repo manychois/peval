@@ -63,10 +63,19 @@ class Evaluator
         return $printer;
     }
 
+    /**
+     * Get the list of unsafe functions that are not allowed during evaluation.
+     *
+     * @return array<string> list of unsafe function names
+     */
     protected static function getUnsafeFunctions(): array
     {
-        if (count(self::$unsafeFunctions) === 0) {
-            self::$unsafeFunctions = include __DIR__ . '/unsafe.php';
+        if (0 === count(self::$unsafeFunctions)) {
+            /**
+             * @var array<string> $default
+             */
+            $default = include __DIR__ . '/unsafe.php';
+            self::$unsafeFunctions = $default;
         }
 
         return self::$unsafeFunctions;
@@ -108,6 +117,9 @@ class Evaluator
             Expr\FuncCall::class => $this->evalFuncCall($expr),
             Expr\Instanceof_::class => $this->evalInstanceOf($expr),
             Expr\MethodCall::class => $this->evalMethodCall($expr),
+            Expr\NullsafeMethodCall::class => $this->evalMethodCall($expr, true),
+            Expr\NullsafePropertyFetch::class => $this->evalPropertyFetch($expr, true),
+            Expr\PropertyFetch::class => $this->evalPropertyFetch($expr),
             Expr\Variable::class => $this->evalVariable($expr),
             Scalar\InterpolatedString::class => $this->evalInterpolatedString($expr),
             default => throw new EvaluationException(sprintf('Expression %s of type %s cannot be evaluated', self::getPrinter()->prettyPrintExpr($expr), $expr::class)),
@@ -288,10 +300,14 @@ class Evaluator
         return $result;
     }
 
-    protected function evalMethodCall(Expr $expr): mixed
+    protected function evalMethodCall(Expr $expr, bool $nullSafe = false): mixed
     {
-        assert($expr instanceof Expr\MethodCall, 'Expected MethodCall expression');
+        assert($expr instanceof Expr\MethodCall || $expr instanceof Expr\NullsafeMethodCall, 'Expected MethodCall or NullsafeMethodCall expression');
         $object = $this->inner->evaluateSilently($expr->var);
+        if ($nullSafe && null === $object) {
+            return null; // Nullsafe method call, return null if object is null
+        }
+
         if (!is_object($object)) {
             throw new EvaluationException(sprintf('Method call on non-object: %s', self::getPrinter()->prettyPrintExpr($expr->var)));
         }
@@ -314,6 +330,34 @@ class Evaluator
         assert(is_callable($callable), 'Method call is not callable');
 
         return call_user_func_array($callable, $argValues);
+    }
+
+    protected function evalPropertyFetch(Expr $expr, bool $nullSafe = false): mixed
+    {
+        assert($expr instanceof Expr\PropertyFetch || $expr instanceof Expr\NullsafePropertyFetch, 'Expected PropertyFetch or NullsafePropertyFetch expression');
+        $object = $this->inner->evaluateSilently($expr->var);
+        if ($nullSafe && null === $object) {
+            return null; // Nullsafe property fetch, return null if object is null
+        }
+
+        if (!is_object($object)) {
+            throw new EvaluationException(sprintf('Property fetch on non-object: %s', self::getPrinter()->prettyPrintExpr($expr->var)));
+        }
+
+        if ($expr->name instanceof Node\Identifier) {
+            $propertyName = $expr->name->name;
+        } else {
+            $propertyName = $this->inner->evaluateSilently($expr->name);
+            if (!is_string($propertyName)) {
+                throw new EvaluationException(sprintf('Property name must be a string, got %s', get_debug_type($propertyName)));
+            }
+        }
+
+        if (!property_exists($object, $propertyName)) {
+            throw new EvaluationException(sprintf('Property %s does not exist on object of type %s', $propertyName, get_debug_type($object)));
+        }
+
+        return $object->{$propertyName};
     }
 
     protected function evalVariable(Expr $expr): mixed

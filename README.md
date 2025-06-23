@@ -26,6 +26,7 @@ Peval is a secure PHP library for parsing and evaluating expressions with suppor
 ```bash
 composer require manychois/peval
 ```
+
 ## Requirements
 
 - PHP 8.4 or higher
